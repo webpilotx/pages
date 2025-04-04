@@ -209,9 +209,59 @@ function App() {
     setActiveTab("details"); // Default to the details tab
   };
 
-  const handleSelectDeployment = (deployment) => {
-    setSelectedDeployment(deployment);
-    fetchDeploymentLog(deployment.id, deployment.exitCode === null);
+  const handleSelectDeployment = async (deployment) => {
+    try {
+      setSelectedDeployment(deployment);
+      setIsLoadingLog(true);
+
+      // Fetch the latest deployment record
+      const response = await fetch(
+        `/pages/api/deployments?pageId=${selectedPage.id}`
+      );
+      if (response.ok) {
+        const deploymentsData = await response.json();
+        setDeployments(deploymentsData);
+
+        // Fetch logs for the selected deployment
+        const logResponse = await fetch(
+          `/pages/api/deployment-log?deploymentId=${deployment.id}`
+        );
+        if (logResponse.ok) {
+          const logs = await logResponse.text();
+          setDeploymentLogs(logs);
+        } else {
+          setDeploymentLogs("Failed to fetch deployment logs.");
+        }
+      } else {
+        console.error("Failed to fetch deployments.");
+      }
+    } catch (error) {
+      console.error("Error fetching deployment details or logs:", error);
+      setDeploymentLogs("Error fetching deployment logs.");
+    } finally {
+      setIsLoadingLog(false);
+    }
+  };
+
+  const handleTabChange = async (tab) => {
+    setActiveTab(tab);
+
+    if (tab === "logs" && selectedPage) {
+      try {
+        // Fetch deployments when switching to the "Deployment Logs" tab
+        const response = await fetch(
+          `/pages/api/deployments?pageId=${selectedPage.id}`
+        );
+        if (response.ok) {
+          const deploymentsData = await response.json();
+          setDeployments(deploymentsData);
+        } else {
+          console.error("Failed to fetch deployments.");
+        }
+      } catch (error) {
+        console.error("Error fetching deployments:", error);
+      }
+    }
   };
 
   const handleCreatePage = () => {
@@ -334,7 +384,7 @@ function App() {
               <div className="mb-4">
                 <div className="flex space-x-4 border-b border-gray-300">
                   <button
-                    onClick={() => setActiveTab("details")}
+                    onClick={() => handleTabChange("details")}
                     className={`px-4 py-2 ${
                       activeTab === "details"
                         ? "border-b-2 border-blue-500 text-blue-500"
@@ -344,7 +394,7 @@ function App() {
                     Page Details
                   </button>
                   <button
-                    onClick={() => setActiveTab("logs")}
+                    onClick={() => handleTabChange("logs")}
                     className={`px-4 py-2 ${
                       activeTab === "logs"
                         ? "border-b-2 border-blue-500 text-blue-500"
