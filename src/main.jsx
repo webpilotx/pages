@@ -167,16 +167,24 @@ function App() {
 
       // Fetch deployments for the newly created or updated page
       const pageId = editPage ? editPage.id : data.pageId;
-      await fetchDeployments(pageId);
+      const deploymentsResponse = await fetch(
+        `/pages/api/deployments?pageId=${pageId}`
+      );
+      if (deploymentsResponse.ok) {
+        const deploymentsData = await deploymentsResponse.json();
+        setDeployments(deploymentsData);
 
-      // Automatically select the latest deployment and expand its logs
-      if (deployments.length > 0) {
-        const latestDeployment = deployments[deployments.length - 1];
-        setSelectedDeployment(latestDeployment);
-        await fetchDeploymentLog(
-          latestDeployment.id,
-          latestDeployment.exitCode === null
+        // Automatically select the latest deployment (running deployment)
+        const latestDeployment = deploymentsData.find(
+          (deployment) => deployment.id === data.deploymentId
         );
+        if (latestDeployment) {
+          setSelectedDeployment(latestDeployment);
+          await fetchDeploymentLog(
+            latestDeployment.id,
+            latestDeployment.exitCode === null
+          );
+        }
       }
 
       // Switch to the deployment logs tab
