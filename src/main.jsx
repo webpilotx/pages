@@ -46,6 +46,9 @@ function App() {
       const response = await fetch(`/pages/api/branches?repo=${repoFullName}`);
       const data = await response.json();
       setBranches(data.branches);
+      if (data.branches.length > 0) {
+        setBranch(data.branches[0]); // Set the first branch as the default
+      }
     } catch (error) {
       console.error("Error fetching branches:", error);
     }

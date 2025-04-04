@@ -106,6 +106,53 @@ app.get("/pages/api/repositories", async (req, res) => {
   }
 });
 
+app.get("/pages/api/branches", async (req, res) => {
+  try {
+    const { repo } = req.query;
+
+    if (!repo) {
+      return res.status(400).json({ error: "Missing repo parameter" });
+    }
+
+    // Fetch all connected accounts
+    const accounts = await db
+      .select({
+        accessToken: accountsTable.accessToken,
+      })
+      .from(accountsTable);
+
+    if (!accounts.length) {
+      return res.status(404).json({ error: "No connected accounts found" });
+    }
+
+    // Use the first account's access token to fetch branches
+    const response = await fetch(
+      `https://api.github.com/repos/${repo}/branches`,
+      {
+        headers: {
+          Authorization: `Bearer ${accounts[0].accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Error fetching branches:", errorData);
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch branches", details: errorData });
+    }
+
+    const branches = await response.json();
+    res.json({ branches: branches.map((branch) => branch.name) });
+  } catch (error) {
+    console.error("Error fetching branches:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch branches", details: error.message });
+  }
+});
+
 app.get("/pages/api/github/callback", async (req, res) => {
   try {
     const { code } = req.query;
