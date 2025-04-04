@@ -1,8 +1,22 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import {
+  Link,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+  useNavigate,
+} from "react-router-dom";
 import "./index.css";
 
 function PagesList({ pagesList, handleSelectPage, handleCreatePage }) {
+  const navigate = useNavigate();
+
+  const handlePageClick = (page) => {
+    handleSelectPage(page);
+    navigate(`/pages/${page.id}`);
+  };
+
   return (
     <>
       <h1 className="text-3xl font-bold mt-12 mb-6">Pages List</h1>
@@ -11,7 +25,7 @@ function PagesList({ pagesList, handleSelectPage, handleCreatePage }) {
           <li
             key={page.id}
             className="p-4 bg-gray-100 rounded-md shadow-sm border border-gray-300 cursor-pointer hover:bg-gray-200"
-            onClick={() => handleSelectPage(page)}
+            onClick={() => handlePageClick(page)}
           >
             <p>
               <strong>Repo:</strong> {page.repo}
@@ -210,6 +224,93 @@ function DeploymentLogs({
   );
 }
 
+function PageDetailsWrapper({
+  pagesList,
+  fetchBranches,
+  fetchDeployments,
+  handleSaveAndDeploy,
+}) {
+  const [selectedPage, setSelectedPage] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [deployments, setDeployments] = useState([]);
+  const [selectedDeployment, setSelectedDeployment] = useState(null);
+  const [activeTab, setActiveTab] = useState("details");
+  const navigate = useNavigate();
+
+  const fetchPageData = (pageId) => {
+    const page = pagesList.find((p) => p.id === pageId);
+    if (page) {
+      setSelectedPage(page);
+      fetchBranches(page.repo);
+      fetchDeployments(page.id);
+    }
+  };
+
+  useEffect(() => {
+    const pageId = window.location.pathname.split("/").pop();
+    fetchPageData(pageId);
+  }, [pagesList]);
+
+  const handleBackToPagesList = () => {
+    navigate("/pages");
+  };
+
+  return (
+    selectedPage && (
+      <div>
+        <button
+          onClick={handleBackToPagesList}
+          className="mb-4 px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+        >
+          Back to Pages List
+        </button>
+        <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
+          <div className="mb-4">
+            <div className="flex space-x-4 border-b border-gray-300">
+              <button
+                onClick={() => setActiveTab("details")}
+                className={`px-4 py-2 ${
+                  activeTab === "details"
+                    ? "border-b-2 border-blue-500 text-blue-500"
+                    : "text-gray-500"
+                }`}
+              >
+                Page Details
+              </button>
+              <button
+                onClick={() => setActiveTab("logs")}
+                className={`px-4 py-2 ${
+                  activeTab === "logs"
+                    ? "border-b-2 border-blue-500 text-blue-500"
+                    : "text-gray-500"
+                }`}
+              >
+                Deployment Logs
+              </button>
+            </div>
+          </div>
+          {activeTab === "details" && (
+            <PageDetails
+              selectedPage={selectedPage}
+              branches={branches}
+              fetchBranches={fetchBranches}
+              handleSaveAndDeploy={handleSaveAndDeploy}
+            />
+          )}
+          {activeTab === "logs" && (
+            <DeploymentLogs
+              deployments={deployments}
+              selectedDeployment={selectedDeployment}
+              handleSelectDeployment={setSelectedDeployment}
+              fetchDeploymentLog={(id) => {}}
+            />
+          )}
+        </div>
+      </div>
+    )
+  );
+}
+
 function App() {
   const [pagesList, setPagesList] = useState([]);
   const [selectedPage, setSelectedPage] = useState(null);
@@ -324,78 +425,45 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-black">
-      <nav className="bg-gray-200 border-b border-gray-300">
-        <div className="container mx-auto px-4 py-3 flex items-center">
-          <a
-            href="/"
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          >
-            Home
-          </a>
-        </div>
-      </nav>
-      <main className="flex-grow container mx-auto px-4 py-8">
-        {!selectedPage ? (
-          <PagesList
-            pagesList={pagesList}
-            handleSelectPage={handleSelectPage}
-            handleCreatePage={() => setSelectedPage({})}
-          />
-        ) : (
-          <div>
-            <button
-              onClick={handleBackToPagesList}
-              className="mb-4 px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+    <Router>
+      <div className="min-h-screen flex flex-col bg-white text-black">
+        <nav className="bg-gray-200 border-b border-gray-300">
+          <div className="container mx-auto px-4 py-3 flex items-center">
+            <Link
+              to="/pages"
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
             >
-              Back to Pages List
-            </button>
-            <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
-              <div className="mb-4">
-                <div className="flex space-x-4 border-b border-gray-300">
-                  <button
-                    onClick={() => setActiveTab("details")}
-                    className={`px-4 py-2 ${
-                      activeTab === "details"
-                        ? "border-b-2 border-blue-500 text-blue-500"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    Page Details
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("logs")}
-                    className={`px-4 py-2 ${
-                      activeTab === "logs"
-                        ? "border-b-2 border-blue-500 text-blue-500"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    Deployment Logs
-                  </button>
-                </div>
-              </div>
-              {activeTab === "details" && (
-                <PageDetails
-                  selectedPage={selectedPage}
-                  branches={branches}
+              Home
+            </Link>
+          </div>
+        </nav>
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <Routes>
+            <Route
+              path="/pages"
+              element={
+                <PagesList
+                  pagesList={pagesList}
+                  handleSelectPage={handleSelectPage}
+                  handleCreatePage={() => setSelectedPage({})}
+                />
+              }
+            />
+            <Route
+              path="/pages/:id"
+              element={
+                <PageDetailsWrapper
+                  pagesList={pagesList}
                   fetchBranches={fetchBranches}
+                  fetchDeployments={fetchDeployments}
                   handleSaveAndDeploy={handleSaveAndDeploy}
                 />
-              )}
-              {activeTab === "logs" && (
-                <DeploymentLogs
-                  deployments={deployments}
-                  selectedDeployment={selectedDeployment}
-                  handleSelectDeployment={setSelectedDeployment}
-                  fetchDeploymentLog={fetchDeploymentLog}
-                />
-              )}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+              }
+            />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 
