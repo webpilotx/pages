@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "nodemon index.js",
     "build": "vite build"
   },
   "dependencies": {
@@ -31,7 +31,8 @@
   },
   "nodemonConfig": {
     "watch": [
-      "server.js"
+      "index.js",
+      "schema.js"
     ]
   }
 }
