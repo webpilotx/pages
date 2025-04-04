@@ -112,6 +112,7 @@ function App() {
     setBranch(page.branch);
     setBuildScript(page.buildScript || "");
     setEnvVars([]); // Fetch env vars for the page (if needed)
+    fetchBranches(page.repo); // Fetch branches for the selected page's repository
     setShowCreatePage(true);
     setCreateStep(2); // Skip to Step 2 for editing
   };
