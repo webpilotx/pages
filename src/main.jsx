@@ -18,7 +18,7 @@ function App() {
   const [selectedPage, setSelectedPage] = useState(null); // Track the selected page
   const repositoriesPerPage = 12; // Display 12 repositories per page
   const [activeTab, setActiveTab] = useState("details"); // Track the active tab
-  const [deploymentLogs, setDeploymentLogs] = useState(""); // Store deployment logs
+  const [deploymentLogs, setDeploymentLogs] = useState({}); // Store logs keyed by pageId
   const [deployments, setDeployments] = useState([]); // Store deployments list
   const [selectedDeployment, setSelectedDeployment] = useState(null); // Selected deployment
   const [isLoadingLog, setIsLoadingLog] = useState(false); // Loading indicator for logs
@@ -67,13 +67,22 @@ function App() {
       const response = await fetch(`/pages/deployments/${pageId}.log`);
       if (response.ok) {
         const logs = await response.text();
-        setDeploymentLogs(logs);
+        setDeploymentLogs((prevLogs) => ({
+          ...prevLogs,
+          [pageId]: logs,
+        }));
       } else {
-        setDeploymentLogs("Failed to fetch deployment logs.");
+        setDeploymentLogs((prevLogs) => ({
+          ...prevLogs,
+          [pageId]: "Failed to fetch deployment logs.",
+        }));
       }
     } catch (error) {
       console.error("Error fetching deployment logs:", error);
-      setDeploymentLogs("Error fetching deployment logs.");
+      setDeploymentLogs((prevLogs) => ({
+        ...prevLogs,
+        [pageId]: "Error fetching deployment logs.",
+      }));
     }
   };
 
@@ -91,9 +100,12 @@ function App() {
     }
   };
 
-  const fetchDeploymentLog = async (deploymentId, isRunning) => {
+  const fetchDeploymentLog = async (deploymentId, pageId, isRunning) => {
     if (!deploymentId) {
-      setDeploymentLogs("No deployment selected.");
+      setDeploymentLogs((prevLogs) => ({
+        ...prevLogs,
+        [pageId]: "No deployment selected.",
+      }));
       return;
     }
 
@@ -106,9 +118,15 @@ function App() {
         );
         if (response.ok) {
           const logs = await response.text();
-          setDeploymentLogs(logs);
+          setDeploymentLogs((prevLogs) => ({
+            ...prevLogs,
+            [pageId]: logs,
+          }));
         } else {
-          setDeploymentLogs("Failed to fetch deployment logs.");
+          setDeploymentLogs((prevLogs) => ({
+            ...prevLogs,
+            [pageId]: "Failed to fetch deployment logs.",
+          }));
         }
       };
 
@@ -122,7 +140,7 @@ function App() {
 
           // Check if the deployment is still running
           const updatedResponse = await fetch(
-            `/pages/api/deployments?pageId=${selectedPage.id}`
+            `/pages/api/deployments?pageId=${pageId}`
           );
           const updatedDeployments = await updatedResponse.json();
           const updatedDeployment = updatedDeployments.find(
@@ -136,7 +154,10 @@ function App() {
       }
     } catch (error) {
       console.error("Error fetching deployment log:", error);
-      setDeploymentLogs("Error fetching deployment log.");
+      setDeploymentLogs((prevLogs) => ({
+        ...prevLogs,
+        [pageId]: "Error fetching deployment log.",
+      }));
     } finally {
       setIsLoadingLog(false);
     }
@@ -207,6 +228,7 @@ function App() {
           setSelectedDeployment(latestDeployment);
           await fetchDeploymentLog(
             latestDeployment.id,
+            pageId,
             latestDeployment.exitCode === null
           );
         }
@@ -248,21 +270,20 @@ function App() {
         setDeployments(deploymentsData);
 
         // Fetch logs for the selected deployment
-        const logResponse = await fetch(
-          `/pages/api/deployment-log?deploymentId=${deployment.id}`
+        await fetchDeploymentLog(
+          deployment.id,
+          selectedPage.id,
+          deployment.exitCode === null
         );
-        if (logResponse.ok) {
-          const logs = await logResponse.text();
-          setDeploymentLogs(logs);
-        } else {
-          setDeploymentLogs("Failed to fetch deployment logs.");
-        }
       } else {
         console.error("Failed to fetch deployments.");
       }
     } catch (error) {
       console.error("Error fetching deployment details or logs:", error);
-      setDeploymentLogs("Error fetching deployment logs.");
+      setDeploymentLogs((prevLogs) => ({
+        ...prevLogs,
+        [selectedPage.id]: "Error fetching deployment logs.",
+      }));
     } finally {
       setIsLoadingLog(false);
     }
@@ -551,7 +572,7 @@ function App() {
                     ) : (
                       <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
                         <pre>
-                          {deploymentLogs ||
+                          {deploymentLogs[selectedPage.id] ||
                             "No logs available for this deployment."}
                         </pre>
                       </div>
