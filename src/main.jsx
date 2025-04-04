@@ -4,10 +4,10 @@ import "./index.css";
 
 function App() {
   const [pagesList, setPagesList] = useState([]);
-  const [providerAccounts, setProviderAccounts] = useState([]);
   const [repositories, setRepositories] = useState([]);
-  const [selectedProviderAccount, setSelectedProviderAccount] = useState(null);
-  const [showStep, setShowStep] = useState(1); // Step 1: Choose provider account, Step 2: Choose repo
+  const [totalRepositories, setTotalRepositories] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const repositoriesPerPage = 10;
 
   useEffect(() => {
     async function fetchPagesList() {
@@ -20,44 +20,29 @@ function App() {
       }
     }
 
-    async function fetchProviderAccounts() {
-      try {
-        const response = await fetch("/pages/api/provider-accounts");
-        const data = await response.json();
-        setProviderAccounts(data);
-      } catch (error) {
-        console.error("Error fetching provider accounts:", error);
-      }
-    }
-
     fetchPagesList();
-    fetchProviderAccounts();
   }, []);
 
-  const handleFetchRepositories = async (providerAccountId) => {
+  const fetchRepositories = async (page = 1) => {
     try {
       const response = await fetch(
-        `/pages/api/repositories?providerAccountId=${providerAccountId}`
+        `/pages/api/repositories?page=${page}&limit=${repositoriesPerPage}`
       );
       const data = await response.json();
-      setRepositories(data);
-      setShowStep(2); // Move to Step 2
+      setRepositories(data.repositories);
+      setTotalRepositories(data.total);
+      setCurrentPage(page);
     } catch (error) {
       console.error("Error fetching repositories:", error);
     }
   };
 
-  const handleSelectProviderAccount = (providerAccountId) => {
-    setSelectedProviderAccount(providerAccountId);
-    handleFetchRepositories(providerAccountId);
-  };
+  useEffect(() => {
+    fetchRepositories(currentPage);
+  }, [currentPage]);
 
-  const handleSelectRepository = (repositoryId) => {
-    console.log(
-      `Selected repository: ${repositoryId} for provider account: ${selectedProviderAccount}`
-    );
-    // Add logic to finalize the creation process
-    setShowStep(1); // Reset to Step 1 after completion
+  const handlePageChange = (newPage) => {
+    fetchRepositories(newPage);
   };
 
   return (
@@ -99,46 +84,38 @@ function App() {
           ))}
         </ul>
 
-        <h1 className="text-3xl font-bold mt-12 mb-6">Create Page</h1>
-        {showStep === 1 && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">
-              Step 1: Choose Provider Account
-            </h2>
-            <ul className="space-y-4">
-              {providerAccounts.map((account) => (
-                <li
-                  key={account.login}
-                  className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700 cursor-pointer hover:bg-gray-700"
-                  onClick={() => handleSelectProviderAccount(account.login)}
-                >
-                  <p>
-                    <strong>Login:</strong> {account.login}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {showStep === 2 && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">
-              Step 2: Choose Repository
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {repositories.map((repo) => (
-                <div
-                  key={repo.id}
-                  className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700 cursor-pointer hover:bg-gray-700"
-                  onClick={() => handleSelectRepository(repo.id)}
-                >
-                  <p className="font-bold">{repo.name}</p>
-                </div>
-              ))}
+        <h1 className="text-3xl font-bold mt-12 mb-6">Repositories</h1>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {repositories.map((repo) => (
+            <div
+              key={repo.id}
+              className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700"
+            >
+              <p className="font-bold">{repo.full_name}</p>{" "}
+              {/* Display full_name */}
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+
+        {/* Pagination */}
+        <div className="flex justify-center mt-6 space-x-4">
+          {Array.from(
+            { length: Math.ceil(totalRepositories / repositoriesPerPage) },
+            (_, index) => (
+              <button
+                key={index + 1}
+                onClick={() => handlePageChange(index + 1)}
+                className={`px-4 py-2 rounded-md ${
+                  currentPage === index + 1
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                {index + 1}
+              </button>
+            )
+          )}
+        </div>
       </main>
     </div>
   );

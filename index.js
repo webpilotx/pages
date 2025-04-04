@@ -38,41 +38,53 @@ app.get("/pages/api/pages-list", async (req, res) => {
 
 app.get("/pages/api/repositories", async (req, res) => {
   try {
-    const { providerAccountId } = req.query;
+    const { page = 1, limit = 10 } = req.query;
 
-    if (!providerAccountId) {
-      return res
-        .status(400)
-        .json({ error: "Missing providerAccountId parameter" });
-    }
-
-    // Fetch the access token for the given provider account
-    const [account] = await db
+    // Fetch all connected accounts
+    const accounts = await db
       .select({
+        login: accountsTable.login,
         accessToken: accountsTable.accessToken,
       })
-      .from(accountsTable)
-      .where(eq(accountsTable.login, providerAccountId));
+      .from(accountsTable);
 
-    // Use the access token to fetch repositories from GitHub's API
-    const response = await fetch("https://api.github.com/user/repos", {
-      headers: {
-        Authorization: `Bearer ${account.accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Error fetching repositories from GitHub:", errorData);
-      return res
-        .status(500)
-        .json({ error: "Failed to fetch repositories", details: errorData });
+    if (!accounts.length) {
+      return res.json({ repositories: [], total: 0 });
     }
 
-    const repositories = await response.json();
+    // Fetch repositories from all accounts in parallel
+    const allRepositories = (
+      await Promise.all(
+        accounts.map(async (account) => {
+          const response = await fetch("https://api.github.com/user/repos", {
+            headers: {
+              Authorization: `Bearer ${account.accessToken}`,
+            },
+          });
 
-    // Respond with the list of repositories
-    res.json(repositories);
+          if (!response.ok) {
+            console.error(
+              `Error fetching repositories for account ${account.login}`
+            );
+            return [];
+          }
+
+          return await response.json();
+        })
+      )
+    ).flat();
+
+    // Paginate the repositories
+    const startIndex = (page - 1) * limit;
+    const paginatedRepositories = allRepositories.slice(
+      startIndex,
+      startIndex + parseInt(limit)
+    );
+
+    res.json({
+      repositories: paginatedRepositories,
+      total: allRepositories.length,
+    });
   } catch (error) {
     console.error("Error fetching repositories:", error);
     res
