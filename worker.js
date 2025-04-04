@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import fs from "fs/promises";
 import path from "path";
 import { deploymentsTable, envsTable, pagesTable } from "./schema";
+import { eq } from "drizzle-orm";
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
@@ -41,13 +42,27 @@ const execPromise = (command) =>
       .from(envsTable)
       .where(eq(envsTable.pageId, pageId));
 
-    // Clone the repository
+    // Determine the repository directory
     const cloneDir = path.join(process.env.PAGES_DIR, String(pageId));
     await fs.mkdir(cloneDir, { recursive: true });
 
-    const cloneCommand = `git clone --branch ${page.branch} https://github.com/${page.repo}.git ${cloneDir}`;
-    console.log(`Cloning repository: ${cloneCommand}`);
-    await execPromise(cloneCommand);
+    // Check if the repository already exists
+    const repoExists = await fs
+      .access(path.join(cloneDir, ".git"))
+      .then(() => true)
+      .catch(() => false);
+
+    if (repoExists) {
+      // Run git pull if the repository already exists
+      const pullCommand = `cd ${cloneDir} && git pull origin ${page.branch}`;
+      console.log(`Pulling latest changes: ${pullCommand}`);
+      await execPromise(pullCommand);
+    } else {
+      // Clone the repository if it doesn't exist
+      const cloneCommand = `git clone --branch ${page.branch} https://github.com/${page.repo}.git ${cloneDir}`;
+      console.log(`Cloning repository: ${cloneCommand}`);
+      await execPromise(cloneCommand);
+    }
 
     // Dump environment variables to .env file
     const envFileContent = envVars

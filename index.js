@@ -1,13 +1,12 @@
-import fetch from "node-fetch"; // Import node-fetch
+import { exec } from "child_process";
 import "dotenv/config";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import express from "express";
-import ViteExpress from "vite-express";
-import { accountsTable, pagesTable } from "./schema.js";
-import { eq } from "drizzle-orm";
-import { exec } from "child_process";
-import fs from "fs/promises";
+import fetch from "node-fetch"; // Import node-fetch
 import path from "path";
+import ViteExpress from "vite-express";
+import { accountsTable, envsTable, pagesTable } from "./schema.js";
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
@@ -236,24 +235,43 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
   try {
     const { selectedRepo, pageName, branch, buildScript, envVars } = req.body;
 
-    if (!selectedRepo || !pageName || !branch) {
+    if (!pageName || !branch) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Save the page to the pagesTable
-    const [page] = await db
-      .insert(pagesTable)
-      .values({
-        repo: selectedRepo.full_name,
-        name: pageName,
-        branch,
-        buildScript: buildScript || null,
-      })
-      .returning({ id: pagesTable.id });
+    let page;
+    if (selectedRepo.id) {
+      // Update existing page
+      [page] = await db
+        .update(pagesTable)
+        .set({
+          name: pageName,
+          branch,
+          buildScript: buildScript || null,
+        })
+        .where(eq(pagesTable.id, selectedRepo.id))
+        .returning({ id: pagesTable.id });
+    } else {
+      // Insert new page
+      [page] = await db
+        .insert(pagesTable)
+        .values({
+          repo: selectedRepo.full_name,
+          name: pageName,
+          branch,
+          buildScript: buildScript || null,
+        })
+        .returning({ id: pagesTable.id });
+    }
+
+    // Delete existing environment variables for the page (if updating)
+    if (selectedRepo.id) {
+      await db.delete(envsTable).where(eq(envsTable.pageId, selectedRepo.id));
+    }
 
     // Save environment variables to envsTable
     for (const env of envVars) {
-      await db.insert("envs_table").values({
+      await db.insert(envsTable).values({
         pageId: page.id,
         name: env.name,
         value: env.value,
