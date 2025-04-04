@@ -2,9 +2,7 @@ import { sql } from "drizzle-orm";
 import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const accountsTable = sqliteTable("accounts_table", {
-  providerAccountId: text().primaryKey(),
-  provider: text().notNull(),
-  type: text().notNull(),
+  login: text().primaryKey(),
   accessToken: text().notNull(),
   createdAt: text()
     .notNull()

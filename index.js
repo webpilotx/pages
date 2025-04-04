@@ -59,7 +59,7 @@ app.get("/pages/api/github/callback", async (req, res) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          client_id: process.env.GITHUB_CLIENT_ID,
+          client_id: process.env.VITE_GITHUB_CLIENT_ID,
           client_secret: process.env.GITHUB_CLIENT_SECRET,
           code,
         }),
@@ -75,15 +75,15 @@ app.get("/pages/api/github/callback", async (req, res) => {
         .json({ error: "Failed to retrieve access token", details: tokenData });
     }
 
+    console.log({ tokenData });
+
     const { access_token } = tokenData;
 
     if (!access_token) {
-      return res
-        .status(400)
-        .json({
-          error: "Access token not found in response",
-          details: tokenData,
-        });
+      return res.status(400).json({
+        error: "Access token not found in response",
+        details: tokenData,
+      });
     }
 
     // Fetch user information using the access token
@@ -102,27 +102,20 @@ app.get("/pages/api/github/callback", async (req, res) => {
         .json({ error: "Failed to fetch user information", details: userData });
     }
 
-    const { id: providerAccountId, login: provider, type } = userData;
+    console.log({ userData });
 
-    // Insert the token and user information into the accounts_table
-    await db.insert(accountsTable).values({
-      providerAccountId: providerAccountId.toString(),
-      provider,
-      type,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    const { login } = userData;
+
+    await db.insert(accountsTable).values({ login, accessToken: access_token });
 
     // Respond with success
     res.json({ message: "GitHub account connected successfully" });
   } catch (error) {
     console.error("Error handling GitHub callback:", error);
-    res
-      .status(500)
-      .json({
-        error: "Failed to handle GitHub callback",
-        details: error.message,
-      });
+    res.status(500).json({
+      error: "Failed to handle GitHub callback",
+      details: error.message,
+    });
   }
 });
 

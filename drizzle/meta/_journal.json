@@ -22,6 +22,27 @@
       "when": 1743738576650,
       "tag": "0002_silky_rachel_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1743739028243,
+      "tag": "0003_mature_prism",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1743739043025,
+      "tag": "0004_right_matthew_murdock",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1743739130162,
+      "tag": "0005_aberrant_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }
