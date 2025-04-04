@@ -178,10 +178,15 @@ function App() {
     );
 
     eventSource.onmessage = (event) => {
-      setDeploymentLogs((prevLogs) => ({
-        ...prevLogs,
-        [pageId]: event.data,
-      }));
+      try {
+        const logChunk = event.data; // Receive the log chunk as plain text
+        setDeploymentLogs((prevLogs) => ({
+          ...prevLogs,
+          [pageId]: (prevLogs[pageId] || "") + logChunk, // Append the new log chunk
+        }));
+      } catch (error) {
+        console.error("Error appending log chunk:", error);
+      }
     };
 
     eventSource.onerror = () => {
@@ -274,20 +279,6 @@ function App() {
     }
   };
 
-  const handleEditPage = (page) => {
-    setEditPage(page);
-    setPageName(page.name);
-    setBranch(page.branch);
-    setBuildScript(page.buildScript || "");
-    setEnvVars([]); // Fetch env vars for the page (if needed)
-    fetchBranches(page.repo); // Fetch branches for the selected page's repository
-    fetchDeploymentLogs(page.id); // Fetch deployment logs for the page
-    fetchDeployments(page.id); // Fetch deployments for the page
-    setShowCreatePage(true);
-    setCreateStep(2); // Skip to Step 2 for editing
-    setActiveTab("details"); // Default to the details tab
-  };
-
   const handleSelectDeployment = async (deployment) => {
     try {
       setSelectedDeployment(deployment);
@@ -301,7 +292,7 @@ function App() {
         const deploymentsData = await response.json();
         setDeployments(deploymentsData);
 
-        // Start streaming logs for the selected deployment
+        // Always stream logs for the selected deployment
         fetchDeploymentLogStream(deployment.id, selectedPage.id);
       } else {
         console.error("Failed to fetch deployments.");
