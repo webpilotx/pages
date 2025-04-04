@@ -9,12 +9,16 @@ import {
 } from "react-router-dom";
 import "./index.css";
 
-function PagesList({ pagesList, handleSelectPage, handleCreatePage }) {
+function PagesList({ pagesList, handleSelectPage }) {
   const navigate = useNavigate();
 
   const handlePageClick = (page) => {
     handleSelectPage(page);
     navigate(`/pages/${page.id}`);
+  };
+
+  const handleCreatePage = () => {
+    navigate("/pages/new");
   };
 
   return (
@@ -46,6 +50,179 @@ function PagesList({ pagesList, handleSelectPage, handleCreatePage }) {
         Create
       </button>
     </>
+  );
+}
+
+function CreatePage({ handleCreateNewPage, fetchAccounts, fetchRepositories }) {
+  const [step, setStep] = useState(1);
+  const [selectedAccount, setSelectedAccount] = useState("");
+  const [repo, setRepo] = useState("");
+  const [name, setName] = useState("");
+  const [branch, setBranch] = useState("");
+  const [accounts, setAccounts] = useState([]);
+  const [repositories, setRepositories] = useState([]);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (step === 1) {
+      fetchAccounts().then(setAccounts);
+    } else if (step === 2 && selectedAccount) {
+      fetchRepositories(selectedAccount).then(setRepositories);
+    }
+  }, [step, selectedAccount, fetchAccounts, fetchRepositories]);
+
+  const handleNext = () => {
+    if (step === 1 && selectedAccount) {
+      setStep(2);
+    } else if (step === 2 && repo) {
+      setStep(3);
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+    } else {
+      navigate("/pages");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await handleCreateNewPage({ repo, name, branch });
+    navigate("/pages");
+  };
+
+  return (
+    <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
+      <h2 className="text-2xl font-bold mb-4">
+        {step === 1
+          ? "Choose Provider Account"
+          : step === 2
+          ? "Choose Repository"
+          : "Create New Page"}
+      </h2>
+      {step === 1 && (
+        <div>
+          <label className="block mb-2">Provider Account</label>
+          <select
+            value={selectedAccount}
+            onChange={(e) => setSelectedAccount(e.target.value)}
+            className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+            required
+          >
+            <option value="" disabled>
+              Select an account
+            </option>
+            {accounts.map((account) => (
+              <option key={account.login} value={account.login}>
+                {account.login}
+              </option>
+            ))}
+          </select>
+          <a
+            href={`https://github.com/login/oauth/authorize?client_id=${
+              import.meta.env.VITE_GITHUB_CLIENT_ID
+            }&scope=repo`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mt-2 text-blue-500 hover:underline"
+          >
+            Authorize more GitHub accounts
+          </a>
+          <div className="mt-4 flex justify-between">
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={!selectedAccount}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+      {step === 2 && (
+        <div>
+          <label className="block mb-2">Repository</label>
+          <select
+            value={repo}
+            onChange={(e) => setRepo(e.target.value)}
+            className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+            required
+          >
+            <option value="" disabled>
+              Select a repository
+            </option>
+            {repositories.map((repository) => (
+              <option key={repository.full_name} value={repository.full_name}>
+                {repository.full_name}
+              </option>
+            ))}
+          </select>
+          <div className="mt-4 flex justify-between">
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={!repo}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+      {step === 3 && (
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block mb-2">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2">Branch</label>
+            <input
+              type="text"
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              required
+            />
+          </div>
+          <div className="flex justify-between">
+            <button
+              onClick={handleBack}
+              type="button"
+              className="px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Create
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -408,6 +585,48 @@ function App() {
     }
   };
 
+  const handleCreateNewPage = async (newPage) => {
+    try {
+      const response = await fetch("/pages/api/create-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newPage),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create page");
+      }
+
+      await fetchPagesList();
+    } catch (error) {
+      console.error("Error creating page:", error);
+    }
+  };
+
+  const fetchRepositories = async (accountLogin) => {
+    try {
+      const response = await fetch(
+        `/pages/api/repositories?account=${accountLogin}`
+      );
+      const data = await response.json();
+      return data.repositories;
+    } catch (error) {
+      console.error("Error fetching repositories:", error);
+      return [];
+    }
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await fetch("/pages/api/provider-accounts");
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching accounts:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     fetchPagesList();
   }, []);
@@ -445,7 +664,16 @@ function App() {
                 <PagesList
                   pagesList={pagesList}
                   handleSelectPage={handleSelectPage}
-                  handleCreatePage={() => setSelectedPage({})}
+                />
+              }
+            />
+            <Route
+              path="/pages/new"
+              element={
+                <CreatePage
+                  handleCreateNewPage={handleCreateNewPage}
+                  fetchAccounts={fetchAccounts}
+                  fetchRepositories={fetchRepositories}
                 />
               }
             />
@@ -468,7 +696,9 @@ function App() {
 }
 
 const container = document.getElementById("root");
-const root = createRoot(container);
+let root = container._reactRootContainer
+  ? container._reactRootContainer._internalRoot.current
+  : createRoot(container);
 
 root.render(
   <StrictMode>

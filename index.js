@@ -336,6 +336,36 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
   }
 });
 
+app.post("/pages/api/create-page", async (req, res) => {
+  try {
+    const { repo, name, branch } = req.body;
+
+    if (!repo || !name || !branch) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Insert the new page into the database
+    const [newPage] = await db
+      .insert(pagesTable)
+      .values({
+        repo,
+        name,
+        branch,
+      })
+      .returning({
+        id: pagesTable.id,
+        repo: pagesTable.repo,
+        name: pagesTable.name,
+        branch: pagesTable.branch,
+      });
+
+    res.status(201).json(newPage);
+  } catch (error) {
+    console.error("Error creating new page:", error);
+    res.status(500).json({ error: "Failed to create new page" });
+  }
+});
+
 app.get("/pages/api/deployments", async (req, res) => {
   try {
     const { pageId } = req.query;
