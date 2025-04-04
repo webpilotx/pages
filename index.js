@@ -13,7 +13,11 @@ const PORT = process.env.PORT || 3000;
 
 app.get("/pages/api/provider-accounts", async (req, res) => {
   try {
-    const providerAccounts = await db.select().from(accountsTable);
+    const providerAccounts = await db
+      .select({
+        login: accountsTable.login, // Select the login field
+      })
+      .from(accountsTable);
     res.json(providerAccounts);
   } catch (error) {
     console.error("Error fetching provider accounts:", error);

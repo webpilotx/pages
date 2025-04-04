@@ -4,8 +4,10 @@ import "./index.css";
 
 function App() {
   const [pagesList, setPagesList] = useState([]);
+  const [providerAccounts, setProviderAccounts] = useState([]);
   const [repositories, setRepositories] = useState([]);
-  const [showRepositories, setShowRepositories] = useState(false);
+  const [selectedProviderAccount, setSelectedProviderAccount] = useState(null);
+  const [showStep, setShowStep] = useState(1); // Step 1: Choose provider account, Step 2: Choose repo
 
   useEffect(() => {
     async function fetchPagesList() {
@@ -18,30 +20,44 @@ function App() {
       }
     }
 
+    async function fetchProviderAccounts() {
+      try {
+        const response = await fetch("/pages/api/provider-accounts");
+        const data = await response.json();
+        setProviderAccounts(data);
+      } catch (error) {
+        console.error("Error fetching provider accounts:", error);
+      }
+    }
+
     fetchPagesList();
+    fetchProviderAccounts();
   }, []);
 
-  const handleFetchRepositories = async () => {
+  const handleFetchRepositories = async (providerAccountId) => {
     try {
-      const response = await fetch("/pages/api/repositories");
+      const response = await fetch(
+        `/pages/api/repositories?providerAccountId=${providerAccountId}`
+      );
       const data = await response.json();
       setRepositories(data);
-      setShowRepositories(true);
+      setShowStep(2); // Move to Step 2
     } catch (error) {
       console.error("Error fetching repositories:", error);
     }
   };
 
-  const handleConnectGitProvider = () => {
-    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
-    if (!clientId) {
-      console.error(
-        "GitHub Client ID is not defined in the environment variables."
-      );
-      return;
-    }
-    // Redirect to GitHub's OAuth or connection URL
-    window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}`;
+  const handleSelectProviderAccount = (providerAccountId) => {
+    setSelectedProviderAccount(providerAccountId);
+    handleFetchRepositories(providerAccountId);
+  };
+
+  const handleSelectRepository = (repositoryId) => {
+    console.log(
+      `Selected repository: ${repositoryId} for provider account: ${selectedProviderAccount}`
+    );
+    // Add logic to finalize the creation process
+    setShowStep(1); // Reset to Step 1 after completion
   };
 
   return (
@@ -61,12 +77,6 @@ function App() {
       {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mt-12 mb-6">Pages List</h1>
-        <button
-          onClick={handleFetchRepositories}
-          className="mb-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-        >
-          Create
-        </button>
         <ul className="space-y-4">
           {pagesList.map((page) => (
             <li
@@ -89,26 +99,45 @@ function App() {
           ))}
         </ul>
 
-        {showRepositories && (
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold mb-4">Available Repositories</h2>
-            <button
-              onClick={handleConnectGitProvider}
-              className="mb-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Connect to GitHub
-            </button>
+        <h1 className="text-3xl font-bold mt-12 mb-6">Create Page</h1>
+        {showStep === 1 && (
+          <div>
+            <h2 className="text-2xl font-bold mb-4">
+              Step 1: Choose Provider Account
+            </h2>
+            <ul className="space-y-4">
+              {providerAccounts.map((account) => (
+                <li
+                  key={account.login}
+                  className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700 cursor-pointer hover:bg-gray-700"
+                  onClick={() => handleSelectProviderAccount(account.login)}
+                >
+                  <p>
+                    <strong>Login:</strong> {account.login}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {showStep === 2 && (
+          <div>
+            <h2 className="text-2xl font-bold mb-4">
+              Step 2: Choose Repository
+            </h2>
             <ul className="space-y-4">
               {repositories.map((repo) => (
                 <li
                   key={repo.providerAccountId}
-                  className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700"
+                  className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700 cursor-pointer hover:bg-gray-700"
+                  onClick={() => handleSelectRepository(repo.providerAccountId)}
                 >
                   <p>
-                    <strong>Provider:</strong> {repo.provider}
+                    <strong>Repository:</strong> {repo.providerAccountId}
                   </p>
                   <p>
-                    <strong>Repository ID:</strong> {repo.providerAccountId}
+                    <strong>Provider:</strong> {repo.provider}
                   </p>
                 </li>
               ))}
