@@ -15,6 +15,7 @@ function App() {
   const [buildScript, setBuildScript] = useState("");
   const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
   const [editPage, setEditPage] = useState(null); // Page being edited
+  const [selectedPage, setSelectedPage] = useState(null); // Track the selected page
   const repositoriesPerPage = 12; // Display 12 repositories per page
   const [activeTab, setActiveTab] = useState("details"); // Track the active tab
   const [deploymentLogs, setDeploymentLogs] = useState(""); // Store deployment logs
@@ -217,6 +218,29 @@ function App() {
     setActiveTab("details"); // Ensure the active tab is set to "details"
   };
 
+  const handleSelectPage = (page) => {
+    setSelectedPage(page); // Focus on the selected page
+    setEditPage(page);
+    setPageName(page.name);
+    setBranch(page.branch);
+    setBuildScript(page.buildScript || "");
+    setEnvVars([]); // Fetch env vars for the page (if needed)
+    fetchBranches(page.repo); // Fetch branches for the selected page's repository
+    fetchDeployments(page.id); // Fetch deployments for the page
+    setActiveTab("details"); // Default to the details tab
+  };
+
+  const handleBackToPagesList = () => {
+    setSelectedPage(null); // Clear the selected page and show the pages list
+    setEditPage(null);
+    setPageName("");
+    setBranch("");
+    setBuildScript("");
+    setEnvVars([{ name: "", value: "" }]);
+    setSelectedRepo(null);
+    setActiveTab("details");
+  };
+
   // Calculate the repositories to display for the current page
   const paginatedRepositories = repositories.slice(
     (currentPage - 1) * repositoriesPerPage,
@@ -245,281 +269,218 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mt-12 mb-6">Pages List</h1>
-        <ul className="space-y-4">
-          {pagesList.map((page) => (
-            <li
-              key={page.id}
-              className="p-4 bg-gray-100 rounded-md shadow-sm border border-gray-300 cursor-pointer hover:bg-gray-200"
-              onClick={() => handleEditPage(page)}
-            >
-              <p>
-                <strong>Repo:</strong> {page.repo}
-              </p>
-              <p>
-                <strong>Name:</strong> {page.name}
-              </p>
-              <p>
-                <strong>Branch:</strong> {page.branch}
-              </p>
-            </li>
-          ))}
-        </ul>
-
-        <button
-          onClick={handleCreatePage}
-          className="mt-8 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-        >
-          Create
-        </button>
-
-        {showCreatePage && (
-          <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
-            {createStep === 1 && (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">
-                  Step 1: Choose Repository
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {paginatedRepositories.map((repo) => (
-                    <div
-                      key={repo.id}
-                      className={`p-4 bg-gray-200 rounded-md shadow-sm border ${
-                        selectedRepo?.id === repo.id
-                          ? "border-blue-500"
-                          : "border-gray-300"
-                      } cursor-pointer hover:bg-gray-300`}
-                      onClick={() => handleSelectRepo(repo)}
-                    >
-                      <p className="font-bold truncate">{repo.full_name}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-between mt-6">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 bg-gray-200 text-gray-500 rounded-md hover:bg-gray-300 disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 bg-gray-200 text-gray-500 rounded-md hover:bg-gray-300 disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-                <button
-                  onClick={() => setCreateStep(2)}
-                  disabled={!selectedRepo}
-                  className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+        {!selectedPage ? (
+          <>
+            <h1 className="text-3xl font-bold mt-12 mb-6">Pages List</h1>
+            <ul className="space-y-4">
+              {pagesList.map((page) => (
+                <li
+                  key={page.id}
+                  className="p-4 bg-gray-100 rounded-md shadow-sm border border-gray-300 cursor-pointer hover:bg-gray-200"
+                  onClick={() => handleSelectPage(page)}
                 >
-                  Begin Setup
-                </button>
+                  <p>
+                    <strong>Repo:</strong> {page.repo}
+                  </p>
+                  <p>
+                    <strong>Name:</strong> {page.name}
+                  </p>
+                  <p>
+                    <strong>Branch:</strong> {page.branch}
+                  </p>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={handleCreatePage}
+              className="mt-8 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+            >
+              Create
+            </button>
+          </>
+        ) : (
+          <div>
+            <button
+              onClick={handleBackToPagesList}
+              className="mb-4 px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+            >
+              Back to Pages List
+            </button>
+            {/* Render the selected page details */}
+            <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
+              <div className="mb-4">
+                <h2 className="text-2xl font-bold mb-4">Page Details</h2>
+                <p>
+                  <strong>Repo:</strong> {selectedPage.repo}
+                </p>
+                <p>
+                  <strong>Name:</strong> {selectedPage.name}
+                </p>
+                <p>
+                  <strong>Branch:</strong> {selectedPage.branch}
+                </p>
               </div>
-            )}
 
-            {createStep === 2 && (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">
-                  {editPage ? "Edit Page" : "Step 2: Enter Page Details"}
-                </h2>
-                {editPage && (
-                  <div className="mb-4">
-                    <label className="block mb-2">Repository</label>
-                    <p className="px-4 py-2 bg-gray-200 text-black rounded-md">
-                      <strong>Repo:</strong> {editPage.repo}
-                    </p>
-                    <p className="px-4 py-2 bg-gray-200 text-black rounded-md mt-2">
-                      <strong>Page Name:</strong> {editPage.name}
-                    </p>
-                  </div>
-                )}
-                {!editPage && selectedRepo && (
-                  <div className="mb-4">
-                    <label className="block mb-2">Repository</label>
-                    <p className="px-4 py-2 bg-gray-200 text-black rounded-md">
-                      {selectedRepo.full_name}
-                    </p>
-                    <div className="mb-4 mt-4">
-                      <label className="block mb-2">Page Name</label>
-                      <input
-                        type="text"
-                        value={pageName}
-                        onChange={(e) => setPageName(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
+              {/* Tabs */}
+              <div className="mb-4">
+                <div className="flex space-x-4 border-b border-gray-300">
+                  <button
+                    onClick={() => setActiveTab("details")}
+                    className={`px-4 py-2 ${
+                      activeTab === "details"
+                        ? "border-b-2 border-blue-500 text-blue-500"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Page Details
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("logs")}
+                    className={`px-4 py-2 ${
+                      activeTab === "logs"
+                        ? "border-b-2 border-blue-500 text-blue-500"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Deployment Logs
+                  </button>
+                </div>
+              </div>
 
-                {/* Tabs */}
-                {editPage && (
+              {/* Tab Content */}
+              {activeTab === "details" && (
+                <div>
                   <div className="mb-4">
-                    <div className="flex space-x-4 border-b border-gray-300">
-                      <button
-                        onClick={() => setActiveTab("details")}
-                        className={`px-4 py-2 ${
-                          activeTab === "details"
-                            ? "border-b-2 border-blue-500 text-blue-500"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        Page Details
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("logs")}
-                        className={`px-4 py-2 ${
-                          activeTab === "logs"
-                            ? "border-b-2 border-blue-500 text-blue-500"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        Deployment Logs
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Tab Content */}
-                {activeTab === "details" && (
-                  <div>
-                    <div className="mb-4">
-                      <label className="block mb-2">Branch</label>
-                      <select
-                        value={branch}
-                        onChange={(e) => setBranch(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-                        required
-                      >
-                        <option value="" disabled>
-                          Select a branch
-                        </option>
-                        {branches.map((branch) => (
-                          <option key={branch} value={branch}>
-                            {branch}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="mb-4">
-                      <label className="block mb-2">
-                        Build Script (Optional)
-                      </label>
-                      <textarea
-                        value={buildScript}
-                        onChange={(e) => setBuildScript(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-                        rows="4"
-                      ></textarea>
-                    </div>
-                    <div className="mb-4">
-                      <label className="block mb-2">
-                        Environment Variables
-                      </label>
-                      {envVars.map((env, index) => (
-                        <div key={index} className="flex space-x-4 mb-2">
-                          <input
-                            type="text"
-                            placeholder="Name"
-                            value={env.name}
-                            onChange={(e) =>
-                              handleEnvVarChange(index, "name", e.target.value)
-                            }
-                            className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-                            required
-                          />
-                          <input
-                            type="text"
-                            placeholder="Value"
-                            value={env.value}
-                            onChange={(e) =>
-                              handleEnvVarChange(index, "value", e.target.value)
-                            }
-                            className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-                            required
-                          />
-                          <button
-                            onClick={() => handleRemoveEnvVar(index)}
-                            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        onClick={handleAddEnvVar}
-                        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                      >
-                        Add Env
-                      </button>
-                    </div>
-                    <button
-                      onClick={handleSaveAndDeploy}
-                      disabled={!branch || !pageName}
-                      className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                    <label className="block mb-2">Branch</label>
+                    <select
+                      value={branch}
+                      onChange={(e) => setBranch(e.target.value)}
+                      className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                      required
                     >
-                      Save and Deploy
+                      <option value="" disabled>
+                        Select a branch
+                      </option>
+                      {branches.map((branch) => (
+                        <option key={branch} value={branch}>
+                          {branch}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block mb-2">
+                      Build Script (Optional)
+                    </label>
+                    <textarea
+                      value={buildScript}
+                      onChange={(e) => setBuildScript(e.target.value)}
+                      className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                      rows="4"
+                    ></textarea>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block mb-2">Environment Variables</label>
+                    {envVars.map((env, index) => (
+                      <div key={index} className="flex space-x-4 mb-2">
+                        <input
+                          type="text"
+                          placeholder="Name"
+                          value={env.name}
+                          onChange={(e) =>
+                            handleEnvVarChange(index, "name", e.target.value)
+                          }
+                          className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                          required
+                        />
+                        <input
+                          type="text"
+                          placeholder="Value"
+                          value={env.value}
+                          onChange={(e) =>
+                            handleEnvVarChange(index, "value", e.target.value)
+                          }
+                          className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                          required
+                        />
+                        <button
+                          onClick={() => handleRemoveEnvVar(index)}
+                          className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={handleAddEnvVar}
+                      className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                    >
+                      Add Env
                     </button>
                   </div>
-                )}
+                  <button
+                    onClick={handleSaveAndDeploy}
+                    disabled={!branch || !pageName}
+                    className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                  >
+                    Save and Deploy
+                  </button>
+                </div>
+              )}
 
-                {activeTab === "logs" && (
-                  <div>
-                    <h3 className="text-xl font-bold mb-4">Deployment Logs</h3>
-                    <div className="mb-4">
-                      <ul className="space-y-2">
-                        {deployments.map((deployment) => (
-                          <li
-                            key={deployment.id}
-                            className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
-                              selectedDeployment?.id === deployment.id
-                                ? "border-blue-500"
-                                : "border-gray-300"
-                            }`}
-                            onClick={() => handleSelectDeployment(deployment)}
-                          >
-                            <p>
-                              <strong>Start Time:</strong>{" "}
-                              {new Date(deployment.createdAt).toLocaleString()}
-                            </p>
-                            <p>
-                              <strong>Status:</strong>{" "}
-                              {deployment.exitCode === null
-                                ? "Running"
-                                : deployment.exitCode === 0
-                                ? "Success"
-                                : "Failed"}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    {selectedDeployment ? (
-                      isLoadingLog ? (
-                        <div className="text-center text-gray-500">
-                          Loading logs...
-                        </div>
-                      ) : (
-                        <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
-                          <pre>
-                            {deploymentLogs ||
-                              "No logs available for this deployment."}
-                          </pre>
-                        </div>
-                      )
-                    ) : (
-                      <div className="text-center text-gray-500">
-                        No deployment selected.
-                      </div>
-                    )}
+              {activeTab === "logs" && (
+                <div>
+                  <h3 className="text-xl font-bold mb-4">Deployment Logs</h3>
+                  <div className="mb-4">
+                    <ul className="space-y-2">
+                      {deployments.map((deployment) => (
+                        <li
+                          key={deployment.id}
+                          className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
+                            selectedDeployment?.id === deployment.id
+                              ? "border-blue-500"
+                              : "border-gray-300"
+                          }`}
+                          onClick={() => handleSelectDeployment(deployment)}
+                        >
+                          <p>
+                            <strong>Start Time:</strong>{" "}
+                            {new Date(deployment.createdAt).toLocaleString()}
+                          </p>
+                          <p>
+                            <strong>Status:</strong>{" "}
+                            {deployment.exitCode === null
+                              ? "Running"
+                              : deployment.exitCode === 0
+                              ? "Success"
+                              : "Failed"}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                )}
-              </div>
-            )}
+                  {selectedDeployment ? (
+                    isLoadingLog ? (
+                      <div className="text-center text-gray-500">
+                        Loading logs...
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+                        <pre>
+                          {deploymentLogs ||
+                            "No logs available for this deployment."}
+                        </pre>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      No deployment selected.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>
