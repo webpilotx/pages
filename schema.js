@@ -5,6 +5,7 @@ export const accountsTable = sqliteTable("accounts_table", {
   providerAccountId: text().primaryKey(),
   provider: text().notNull(),
   type: text().notNull(),
+  accessToken: text().notNull(),
   createdAt: text()
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),

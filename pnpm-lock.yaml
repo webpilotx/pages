@@ -48,6 +48,9 @@ importers:
       jose:
         specifier: ^6.0.10
         version: 6.0.10
+      node-fetch:
+        specifier: ^3.3.2
+        version: 3.3.2
       nodemon:
         specifier: ^3.1.9
         version: 3.1.9

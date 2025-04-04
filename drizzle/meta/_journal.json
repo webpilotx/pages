@@ -15,6 +15,13 @@
       "when": 1743737100209,
       "tag": "0001_purple_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1743738576650,
+      "tag": "0002_silky_rachel_grey",
+      "breakpoints": true
     }
   ]
 }

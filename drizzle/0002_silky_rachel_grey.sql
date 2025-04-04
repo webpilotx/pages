@@ -1,0 +1,1 @@
+ALTER TABLE `accounts_table` ADD `accessToken` text NOT NULL;
