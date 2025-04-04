@@ -367,7 +367,8 @@ app.get("/pages/api/deployment-log", async (req, res) => {
       // Check if the log file exists
       await fsPromises.access(logFilePath);
     } catch {
-      return res.status(404).json({ error: "Log file not found" });
+      // If the log file doesn't exist yet, return an empty response
+      return res.status(200).send("");
     }
 
     // Stream the log file content
