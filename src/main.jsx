@@ -53,115 +53,246 @@ function PagesList({ pagesList, handleSelectPage }) {
   );
 }
 
-function CreatePage({ handleCreateNewPage, fetchAccounts, fetchRepositories }) {
+function CreatePage({
+  handleCreateNewPage,
+  fetchAccounts,
+  fetchRepositories,
+  fetchBranches,
+}) {
+  const [step, setStep] = useState(1);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [repo, setRepo] = useState("");
   const [name, setName] = useState("");
   const [branch, setBranch] = useState("");
+  const [branches, setBranches] = useState([]);
+  const [buildScript, setBuildScript] = useState("");
+  const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
   const [accounts, setAccounts] = useState([]);
   const [repositories, setRepositories] = useState([]);
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchAccounts().then((fetchedAccounts) => {
-      setAccounts(fetchedAccounts);
-      if (fetchedAccounts.length > 0) {
-        setSelectedAccount(fetchedAccounts[0].login); // Automatically select the first account
-        fetchRepositories(fetchedAccounts[0].login).then(setRepositories);
-      }
-    });
+    fetchAccounts()
+      .then((fetchedAccounts) => {
+        setAccounts(fetchedAccounts || []); // Ensure accounts is always an array
+        if (fetchedAccounts?.length > 0) {
+          setSelectedAccount(fetchedAccounts[0].login); // Automatically select the first account
+          fetchRepositories(fetchedAccounts[0].login).then(
+            (repos) => setRepositories(repos || []) // Ensure repositories is always an array
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching accounts:", error);
+        setAccounts([]); // Fallback to an empty array on error
+      });
   }, [fetchAccounts, fetchRepositories]);
 
   const handleAccountChange = (accountLogin) => {
     setSelectedAccount(accountLogin);
-    fetchRepositories(accountLogin).then(setRepositories);
+    fetchRepositories(accountLogin)
+      .then((repos) => setRepositories(repos || [])) // Ensure repositories is always an array
+      .catch((error) => {
+        console.error("Error fetching repositories:", error);
+        setRepositories([]); // Fallback to an empty array on error
+      });
+  };
+
+  const handleRepoSelect = (selectedRepo) => {
+    setRepo(selectedRepo);
+    fetchBranches(selectedRepo)
+      .then((fetchedBranches) => {
+        setBranches(fetchedBranches || []); // Ensure branches is always an array
+        if (fetchedBranches?.length > 0) {
+          setBranch(fetchedBranches[0]); // Default to the first branch
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching branches:", error);
+        setBranches([]); // Fallback to an empty array on error
+      });
+  };
+
+  const handleAddEnvVar = () => {
+    setEnvVars([...envVars, { name: "", value: "" }]);
+  };
+
+  const handleRemoveEnvVar = (index) => {
+    const updatedEnvVars = envVars.filter((_, i) => i !== index);
+    setEnvVars(updatedEnvVars);
+  };
+
+  const handleEnvVarChange = (index, field, value) => {
+    const updatedEnvVars = [...envVars];
+    updatedEnvVars[index][field] = value;
+    setEnvVars(updatedEnvVars);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await handleCreateNewPage({ repo, name, branch });
+    await handleCreateNewPage({ repo, name, branch, buildScript, envVars });
     navigate("/pages");
   };
 
   return (
     <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
-      <h2 className="text-2xl font-bold mb-4">Choose Repository</h2>
-      <div>
-        <label className="block mb-2">Provider Account</label>
-        <select
-          value={selectedAccount}
-          onChange={(e) => handleAccountChange(e.target.value)}
-          className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-          required
-        >
-          <option value="" disabled>
-            Select an account
-          </option>
-          {accounts.map((account) => (
-            <option key={account.login} value={account.login}>
-              {account.login}
-            </option>
-          ))}
-        </select>
-        <a
-          href={`https://github.com/login/oauth/authorize?client_id=${
-            import.meta.env.VITE_GITHUB_CLIENT_ID
-          }&scope=repo`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block mt-2 text-blue-500 hover:underline"
-        >
-          Authorize more GitHub accounts
-        </a>
-      </div>
-      <div className="mt-6">
-        <label className="block mb-2">Repository</label>
-        <div className="grid grid-cols-2 gap-4">
-          {repositories.map((repository) => (
-            <div
-              key={repository.full_name}
-              className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
-                repo === repository.full_name
-                  ? "border-blue-500"
-                  : "border-gray-300"
-              }`}
-              onClick={() => setRepo(repository.full_name)}
+      {step === 1 && (
+        <>
+          <h2 className="text-2xl font-bold mb-4">Choose Repository</h2>
+          <div>
+            <label className="block mb-2">Provider Account</label>
+            <select
+              value={selectedAccount}
+              onChange={(e) => handleAccountChange(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              required
             >
-              {repository.full_name}
+              <option value="" disabled>
+                Select an account
+              </option>
+              {accounts.map((account) => (
+                <option key={account.login} value={account.login}>
+                  {account.login}
+                </option>
+              ))}
+            </select>
+            <a
+              href={`https://github.com/login/oauth/authorize?client_id=${
+                import.meta.env.VITE_GITHUB_CLIENT_ID
+              }&scope=repo`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block mt-2 text-blue-500 hover:underline"
+            >
+              Authorize more GitHub accounts
+            </a>
+          </div>
+          <div className="mt-6">
+            <label className="block mb-2">Repository</label>
+            <div className="grid grid-cols-2 gap-4">
+              {repositories.map((repository) => (
+                <div
+                  key={repository.full_name}
+                  className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
+                    repo === repository.full_name
+                      ? "border-blue-500"
+                      : "border-gray-300"
+                  }`}
+                  onClick={() => handleRepoSelect(repository.full_name)}
+                >
+                  {repository.full_name}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-      <form onSubmit={handleSubmit} className="mt-6">
-        <div className="mb-4">
-          <label className="block mb-2">Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block mb-2">Branch</label>
-          <input
-            type="text"
-            value={branch}
-            onChange={(e) => setBranch(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={!repo}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-        >
-          Create
-        </button>
-      </form>
+          </div>
+          <button
+            onClick={() => setStep(2)}
+            disabled={!repo}
+            className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+          >
+            Begin Setup
+          </button>
+        </>
+      )}
+      {step === 2 && (
+        <form onSubmit={handleSubmit}>
+          <h2 className="text-2xl font-bold mb-4">Setup Page Details</h2>
+          <div className="mb-4">
+            <label className="block mb-2">Page Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2">Branch</label>
+            <select
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              required
+            >
+              <option value="" disabled>
+                Select a branch
+              </option>
+              {branches.map((branch) => (
+                <option key={branch} value={branch}>
+                  {branch}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2">Build Script (Optional)</label>
+            <textarea
+              value={buildScript}
+              onChange={(e) => setBuildScript(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              rows="4"
+            ></textarea>
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2">Environment Variables</label>
+            {envVars.map((env, index) => (
+              <div key={index} className="flex space-x-4 mb-2">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={env.name}
+                  onChange={(e) =>
+                    handleEnvVarChange(index, "name", e.target.value)
+                  }
+                  className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Value"
+                  value={env.value}
+                  onChange={(e) =>
+                    handleEnvVarChange(index, "value", e.target.value)
+                  }
+                  className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                  required
+                />
+                <button
+                  onClick={() => handleRemoveEnvVar(index)}
+                  type="button"
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={handleAddEnvVar}
+              type="button"
+              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+            >
+              Add Env
+            </button>
+          </div>
+          <div className="flex justify-between">
+            <button
+              onClick={() => setStep(1)}
+              type="button"
+              className="px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Save and Deploy
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
@@ -614,6 +745,7 @@ function App() {
                   handleCreateNewPage={handleCreateNewPage}
                   fetchAccounts={fetchAccounts}
                   fetchRepositories={fetchRepositories}
+                  fetchBranches={fetchBranches}
                 />
               }
             />
