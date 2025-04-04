@@ -296,6 +296,13 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       .values({ pageId: page.id })
       .returning({ id: deploymentsTable.id });
 
+    // Initialize the log file
+    const logDir = path.join(process.env.PAGES_DIR, "deployments");
+    await fsPromises.mkdir(logDir, { recursive: true });
+    const logFilePath = path.join(logDir, `${deployment.id}.log`);
+    console.log(`Creating empty log file: ${logFilePath}`);
+    await fsPromises.writeFile(logFilePath, ""); // Create an empty log file
+
     // Trigger the build worker using a worker thread
     const worker = new Worker(path.join(__dirname, "worker.js"), {
       workerData: { pageId: page.id, deploymentId: deployment.id },
@@ -382,6 +389,54 @@ app.get("/pages/api/deployment-log", async (req, res) => {
   } catch (error) {
     console.error("Error fetching deployment log:", error);
     res.status(500).json({ error: "Failed to fetch deployment log" });
+  }
+});
+
+app.get("/pages/api/deployment-log-stream", async (req, res) => {
+  try {
+    const { deploymentId } = req.query;
+
+    if (!deploymentId) {
+      return res.status(400).json({ error: "Missing deploymentId parameter" });
+    }
+
+    const logFilePath = path.join(
+      process.env.PAGES_DIR,
+      "deployments",
+      `${deploymentId}.log`
+    );
+
+    // Set headers for SSE
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    // Send an initial event to establish the connection
+    res.write("event: connected\n");
+    res.write("data: Log streaming started\n\n");
+
+    // Watch the log file for changes
+    const watcher = fs.watch(logFilePath, { encoding: "utf-8" }, async () => {
+      try {
+        const logs = await fsPromises.readFile(logFilePath, "utf-8");
+        res.write(`event: log\n`);
+        res.write(`data: ${JSON.stringify(logs)}\n\n`);
+      } catch (error) {
+        console.error("Error reading log file:", error);
+      }
+    });
+
+    // Handle client disconnect
+    req.on("close", () => {
+      console.log(
+        `Client disconnected from log stream for deployment ${deploymentId}`
+      );
+      watcher.close();
+      res.end();
+    });
+  } catch (error) {
+    console.error("Error streaming deployment log:", error);
+    res.status(500).json({ error: "Failed to stream deployment log" });
   }
 });
 

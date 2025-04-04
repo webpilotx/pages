@@ -163,6 +163,38 @@ function App() {
     }
   };
 
+  const fetchDeploymentLogStream = (deploymentId, pageId) => {
+    if (!deploymentId) {
+      setDeploymentLogs((prevLogs) => ({
+        ...prevLogs,
+        [pageId]: "No deployment selected.",
+      }));
+      return;
+    }
+
+    // Establish an SSE connection
+    const eventSource = new EventSource(
+      `/pages/api/deployment-log-stream?deploymentId=${deploymentId}`
+    );
+
+    eventSource.onmessage = (event) => {
+      setDeploymentLogs((prevLogs) => ({
+        ...prevLogs,
+        [pageId]: event.data,
+      }));
+    };
+
+    eventSource.onerror = () => {
+      console.error("Error in log stream connection.");
+      eventSource.close();
+    };
+
+    // Close the connection when the deployment is complete or the user navigates away
+    return () => {
+      eventSource.close();
+    };
+  };
+
   const handleSelectRepo = (repo) => {
     setSelectedRepo(repo);
     fetchBranches(repo.full_name); // Fetch branches for the selected repository
@@ -269,12 +301,8 @@ function App() {
         const deploymentsData = await response.json();
         setDeployments(deploymentsData);
 
-        // Fetch logs for the selected deployment
-        await fetchDeploymentLog(
-          deployment.id,
-          selectedPage.id,
-          deployment.exitCode === null
-        );
+        // Start streaming logs for the selected deployment
+        fetchDeploymentLogStream(deployment.id, selectedPage.id);
       } else {
         console.error("Failed to fetch deployments.");
       }

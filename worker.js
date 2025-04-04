@@ -75,10 +75,6 @@ const execPromise = (command) =>
       .join("\n");
     await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
 
-    const logDir = path.join(process.env.PAGES_DIR, "deployments");
-    await fs.mkdir(logDir, { recursive: true });
-    const logFilePath = path.join(logDir, `${deploymentId}.log`);
-
     let buildOutput = "No build script provided.";
     let exitCode = 0;
 
@@ -94,6 +90,8 @@ const execPromise = (command) =>
     }
 
     // Write the output to the log file
+    const logDir = path.join(process.env.PAGES_DIR, "deployments");
+    const logFilePath = path.join(logDir, `${deploymentId}.log`);
     console.log(`Writing build output to log file: ${logFilePath}`);
     await fs.writeFile(logFilePath, buildOutput);
     console.log(`Build output written to log file: ${logFilePath}`);
