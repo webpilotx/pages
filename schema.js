@@ -34,3 +34,15 @@ export const envsTable = sqliteTable("envs_table", {
     .default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text(),
 });
+
+export const deploymentsTable = sqliteTable("deployments_table", {
+  id: int().primaryKey({ autoIncrement: true }),
+  pageId: int()
+    .notNull()
+    .references(() => pagesTable.id, { onDelete: "cascade" }),
+  output: text().notNull(),
+  createdAt: text()
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  completedAt: text(),
+});

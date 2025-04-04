@@ -43,6 +43,13 @@
       "when": 1743739130162,
       "tag": "0005_aberrant_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1743742120837,
+      "tag": "0006_gigantic_corsair",
+      "breakpoints": true
     }
   ]
 }

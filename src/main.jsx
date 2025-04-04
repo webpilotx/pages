@@ -74,16 +74,33 @@ function App() {
     setEnvVars(updatedEnvVars);
   };
 
-  const handleSaveAndDeploy = () => {
-    console.log({
-      selectedRepo,
-      pageName,
-      branch,
-      buildScript,
-      envVars,
-    });
-    // Add logic to save and deploy the page
-    setShowCreatePage(false); // Close the create page modal
+  const handleSaveAndDeploy = async () => {
+    try {
+      const response = await fetch("/pages/api/save-and-deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedRepo,
+          pageName,
+          branch,
+          buildScript,
+          envVars,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error during save and deploy:", errorData);
+        alert("Failed to save and deploy: " + errorData.error);
+        return;
+      }
+
+      alert("Page saved and deployed successfully!");
+      setShowCreatePage(false); // Close the create page modal
+    } catch (error) {
+      console.error("Error during save and deploy:", error);
+      alert("Failed to save and deploy: " + error.message);
+    }
   };
 
   // Calculate the repositories to display for the current page

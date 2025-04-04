@@ -5,12 +5,17 @@ import express from "express";
 import ViteExpress from "vite-express";
 import { accountsTable, pagesTable } from "./schema.js";
 import { eq } from "drizzle-orm";
+import { exec } from "child_process";
+import fs from "fs/promises";
+import path from "path";
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
+
+app.use(express.json()); // Middleware to parse JSON request bodies
 
 app.get("/pages/api/provider-accounts", async (req, res) => {
   try {
@@ -226,6 +231,99 @@ app.get("/pages/api/github/callback", async (req, res) => {
     });
   }
 });
+
+app.post("/pages/api/save-and-deploy", async (req, res) => {
+  try {
+    const { selectedRepo, pageName, branch, buildScript, envVars } = req.body;
+
+    if (!selectedRepo || !pageName || !branch) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Save the page to the pagesTable
+    const [page] = await db
+      .insert(pagesTable)
+      .values({
+        repo: selectedRepo.full_name,
+        name: pageName,
+        branch,
+        buildScript: buildScript || null,
+      })
+      .returning({ id: pagesTable.id });
+
+    // Save environment variables to envsTable
+    for (const env of envVars) {
+      await db.insert("envs_table").values({
+        pageId: page.id,
+        name: env.name,
+        value: env.value,
+      });
+    }
+
+    // Clone the repository
+    const cloneDir = path.join(process.env.PAGES_DIR, String(page.id));
+    await fs.mkdir(cloneDir, { recursive: true });
+
+    const cloneCommand = `git clone --branch ${branch} https://github.com/${selectedRepo.full_name}.git ${cloneDir}`;
+    console.log(`Cloning repository: ${cloneCommand}`);
+    await execPromise(cloneCommand);
+
+    // Dump environment variables to .env file
+    const envFileContent = envVars
+      .map((env) => `${env.name}=${env.value}`)
+      .join("\n");
+    await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
+
+    // Run the build script if provided
+    if (buildScript) {
+      const buildCommand = `cd ${cloneDir} && ${buildScript}`;
+      console.log(`Running build script: ${buildCommand}`);
+      const buildOutput = await execPromise(buildCommand);
+
+      // Log the output to deploymentsTable
+      await db.insert("deployments_table").values({
+        pageId: page.id,
+        output: buildOutput,
+        status: "success",
+      });
+    } else {
+      // Log success without build script
+      await db.insert("deployments_table").values({
+        pageId: page.id,
+        output: "No build script provided.",
+        status: "success",
+      });
+    }
+
+    res.json({ message: "Page saved and deployed successfully" });
+  } catch (error) {
+    console.error("Error during save and deploy:", error);
+
+    // Log failure to deploymentsTable
+    if (req.body.pageId) {
+      await db.insert("deployments_table").values({
+        pageId: req.body.pageId,
+        output: error.message,
+        status: "failure",
+      });
+    }
+
+    res
+      .status(500)
+      .json({ error: "Failed to save and deploy", details: error.message });
+  }
+});
+
+const execPromise = (command) =>
+  new Promise((resolve, reject) => {
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        reject(stderr || error.message);
+      } else {
+        resolve(stdout);
+      }
+    });
+  });
 
 ViteExpress.listen(app, PORT, () =>
   console.log(`Server is listening on port ${PORT}...`)
