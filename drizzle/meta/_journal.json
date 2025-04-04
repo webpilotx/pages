@@ -50,6 +50,13 @@
       "when": 1743742120837,
       "tag": "0006_gigantic_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1743742700938,
+      "tag": "0007_needy_magma",
+      "breakpoints": true
     }
   ]
 }

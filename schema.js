@@ -40,9 +40,9 @@ export const deploymentsTable = sqliteTable("deployments_table", {
   pageId: int()
     .notNull()
     .references(() => pagesTable.id, { onDelete: "cascade" }),
-  output: text().notNull(),
   createdAt: text()
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),
   completedAt: text(),
+  exitCode: int(),
 });

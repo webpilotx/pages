@@ -260,54 +260,24 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       });
     }
 
-    // Clone the repository
-    const cloneDir = path.join(process.env.PAGES_DIR, String(page.id));
-    await fs.mkdir(cloneDir, { recursive: true });
+    // Trigger the build worker asynchronously
+    const workerCommand = `node ${path.join(__dirname, "worker.js")} ${
+      page.id
+    }`;
+    console.log(`Triggering build worker: ${workerCommand}`);
+    exec(workerCommand, (error, stdout, stderr) => {
+      if (error) {
+        console.error(
+          `Error triggering build worker: ${stderr || error.message}`
+        );
+      } else {
+        console.log(`Build worker output: ${stdout}`);
+      }
+    });
 
-    const cloneCommand = `git clone --branch ${branch} https://github.com/${selectedRepo.full_name}.git ${cloneDir}`;
-    console.log(`Cloning repository: ${cloneCommand}`);
-    await execPromise(cloneCommand);
-
-    // Dump environment variables to .env file
-    const envFileContent = envVars
-      .map((env) => `${env.name}=${env.value}`)
-      .join("\n");
-    await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
-
-    // Run the build script if provided
-    if (buildScript) {
-      const buildCommand = `cd ${cloneDir} && ${buildScript}`;
-      console.log(`Running build script: ${buildCommand}`);
-      const buildOutput = await execPromise(buildCommand);
-
-      // Log the output to deploymentsTable
-      await db.insert("deployments_table").values({
-        pageId: page.id,
-        output: buildOutput,
-        status: "success",
-      });
-    } else {
-      // Log success without build script
-      await db.insert("deployments_table").values({
-        pageId: page.id,
-        output: "No build script provided.",
-        status: "success",
-      });
-    }
-
-    res.json({ message: "Page saved and deployed successfully" });
+    res.json({ message: "Page saved and deployment triggered successfully" });
   } catch (error) {
     console.error("Error during save and deploy:", error);
-
-    // Log failure to deploymentsTable
-    if (req.body.pageId) {
-      await db.insert("deployments_table").values({
-        pageId: req.body.pageId,
-        output: error.message,
-        status: "failure",
-      });
-    }
-
     res
       .status(500)
       .json({ error: "Failed to save and deploy", details: error.message });
