@@ -203,8 +203,11 @@ function CreatePage({
                           : "border-gray-300"
                       }`}
                       onClick={() => handleRepoSelect(repository.full_name)}
+                      title={repository.full_name} // Tooltip for full name
                     >
-                      {repository.full_name}
+                      <span className="block truncate">
+                        {repository.full_name}
+                      </span>
                     </div>
                   ))}
                 </div>
