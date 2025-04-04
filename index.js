@@ -1,4 +1,3 @@
-import { exec } from "child_process";
 import "dotenv/config";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
@@ -8,7 +7,7 @@ import fetch from "node-fetch"; // Import node-fetch
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import ViteExpress from "vite-express";
-import { Worker, isMainThread, parentPort } from "worker_threads"; // Import Worker from worker_threads
+import { Worker, isMainThread } from "worker_threads"; // Import Worker from worker_threads
 import {
   accountsTable,
   deploymentsTable,
@@ -291,24 +290,32 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       });
     }
 
+    // Insert a new deployment record
+    const [deployment] = await db
+      .insert(deploymentsTable)
+      .values({ pageId: page.id })
+      .returning({ id: deploymentsTable.id });
+
     // Trigger the build worker using a worker thread
     const worker = new Worker(path.join(__dirname, "worker.js"), {
-      workerData: { pageId: page.id },
-    });
-
-    worker.on("message", (message) => {
-      console.log(`Worker message: ${JSON.stringify(message, null, 2)}`);
+      workerData: { pageId: page.id, deploymentId: deployment.id },
     });
 
     worker.on("error", (error) => {
       console.error(`Worker error: ${error.message}`);
     });
 
-    worker.on("exit", (code) => {
-      if (code !== 0) {
-        console.error(`Worker stopped with exit code ${code}`);
-      } else {
-        console.log("Worker completed successfully.");
+    worker.on("exit", async (code) => {
+      console.log(`Worker exited with code ${code}`);
+      const exitCode = code === 0 ? 0 : 1; // 0 for success, 1 for failure
+      try {
+        await db
+          .update(deploymentsTable)
+          .set({ exitCode, completedAt: new Date().toISOString() })
+          .where(eq(deploymentsTable.id, deployment.id));
+        console.log(`Deployment ${deployment.id} updated successfully.`);
+      } catch (error) {
+        console.error(`Failed to update deployment ${deployment.id}:`, error);
       }
     });
 
@@ -372,56 +379,10 @@ app.get("/pages/api/deployment-log", async (req, res) => {
   }
 });
 
-const execPromise = (command) =>
-  new Promise((resolve, reject) => {
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        reject(stderr || error.message);
-      } else {
-        resolve(stdout);
-      }
-    });
-  });
-
 if (!isMainThread) {
-  // Handle database operations for worker threads
-  parentPort.on("message", async (message) => {
-    try {
-      const { action, data } = message;
-
-      if (action === "fetchPageDetails") {
-        const [page] = await db
-          .select()
-          .from(pagesTable)
-          .where(eq(pagesTable.id, data.pageId));
-        parentPort.postMessage({ success: true, result: page });
-      } else if (action === "fetchEnvVars") {
-        const envVars = await db
-          .select()
-          .from(envsTable)
-          .where(eq(envsTable.pageId, data.pageId));
-        parentPort.postMessage({ success: true, result: envVars });
-      } else if (action === "insertDeployment") {
-        const [deployment] = await db
-          .insert(deploymentsTable)
-          .values(data)
-          .returning({ id: deploymentsTable.id });
-        parentPort.postMessage({ success: true, result: deployment });
-      } else if (action === "updateDeployment") {
-        await db
-          .update(deploymentsTable)
-          .set(data.values)
-          .where(eq(deploymentsTable.id, data.deploymentId));
-        parentPort.postMessage({ success: true });
-      } else {
-        parentPort.postMessage({ success: false, error: "Unknown action" });
-      }
-    } catch (error) {
-      parentPort.postMessage({ success: false, error: error.message });
-    }
-  });
+  console.error("This code should not run in the worker thread.");
 } else {
-  // ...existing server code...
+  // Main thread logic
   ViteExpress.listen(app, PORT, () =>
     console.log(`Server is listening on port ${PORT}...`)
   );

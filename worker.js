@@ -2,7 +2,12 @@ import { exec } from "child_process";
 import "dotenv/config";
 import fs from "fs/promises";
 import path from "path";
-import { parentPort, workerData } from "worker_threads";
+import { drizzle } from "drizzle-orm/libsql";
+import { eq } from "drizzle-orm";
+import { workerData } from "worker_threads";
+import { envsTable, pagesTable } from "./schema.js";
+
+const db = drizzle(process.env.DB_FILE_NAME);
 
 const execPromise = (command) =>
   new Promise((resolve, reject) => {
@@ -15,39 +20,36 @@ const execPromise = (command) =>
     });
   });
 
-const sendToMainThread = (action, data) =>
-  new Promise((resolve, reject) => {
-    parentPort.once("message", (response) => {
-      if (response.success) {
-        resolve(response.result);
-      } else {
-        reject(new Error(response.error));
-      }
-    });
-    parentPort.postMessage({ action, data });
-  });
-
 (async () => {
   try {
-    const { pageId } = workerData;
+    const { pageId, deploymentId } = workerData;
 
-    console.log(`Worker started for page ID: ${pageId}`);
+    console.log(
+      `Worker started for page ID: ${pageId}, deployment ID: ${deploymentId}`
+    );
 
     // Fetch page details
-    const page = await sendToMainThread("fetchPageDetails", { pageId });
+    const [page] = await db
+      .select()
+      .from(pagesTable)
+      .where(eq(pagesTable.id, pageId));
     if (!page) {
       throw new Error(`Page with ID ${pageId} not found`);
     }
     console.log(`Fetched page details: ${JSON.stringify(page, null, 2)}`);
 
     // Fetch environment variables
-    const envVars = await sendToMainThread("fetchEnvVars", { pageId });
+    const envVars = await db
+      .select()
+      .from(envsTable)
+      .where(eq(envsTable.pageId, pageId));
     console.log(
       `Fetched environment variables: ${JSON.stringify(envVars, null, 2)}`
     );
 
     // Determine the repository directory
     const cloneDir = path.join(process.env.PAGES_DIR, String(pageId));
+    console.log(`Repository directory: ${cloneDir}`);
     await fs.mkdir(cloneDir, { recursive: true });
 
     // Check if the repository already exists
@@ -57,41 +59,32 @@ const sendToMainThread = (action, data) =>
       .catch(() => false);
 
     if (repoExists) {
-      // Run git pull if the repository already exists
+      console.log(`Repository exists. Pulling latest changes.`);
       const pullCommand = `cd ${cloneDir} && git pull origin ${page.branch}`;
-      parentPort.postMessage(`Pulling latest changes: ${pullCommand}`);
       await execPromise(pullCommand);
     } else {
-      // Clone the repository if it doesn't exist
+      console.log(`Repository does not exist. Cloning repository.`);
       const cloneCommand = `git clone --branch ${page.branch} https://github.com/${page.repo}.git ${cloneDir}`;
-      parentPort.postMessage(`Cloning repository: ${cloneCommand}`);
       await execPromise(cloneCommand);
     }
 
     // Dump environment variables to .env file
+    console.log(`Writing environment variables to .env file.`);
     const envFileContent = envVars
       .map((env) => `${env.name}=${env.value}`)
       .join("\n");
     await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
 
-    // Insert a new deployment record
-    const deployment = await sendToMainThread("insertDeployment", {
-      pageId: page.id,
-    });
-    console.log(
-      `Created deployment record: ${JSON.stringify(deployment, null, 2)}`
-    );
-
     const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fs.mkdir(logDir, { recursive: true });
-    const logFilePath = path.join(logDir, `${deployment.id}.log`);
+    const logFilePath = path.join(logDir, `${deploymentId}.log`);
 
     let buildOutput = "No build script provided.";
     let exitCode = 0;
 
     if (page.buildScript) {
+      console.log(`Running build script: ${page.buildScript}`);
       const buildCommand = `cd ${cloneDir} && ${page.buildScript}`;
-      parentPort.postMessage(`Running build script: ${buildCommand}`);
       try {
         buildOutput = await execPromise(buildCommand);
       } catch (error) {
@@ -101,21 +94,13 @@ const sendToMainThread = (action, data) =>
     }
 
     // Write the output to the log file
+    console.log(`Writing build output to log file: ${logFilePath}`);
     await fs.writeFile(logFilePath, buildOutput);
     console.log(`Build output written to log file: ${logFilePath}`);
 
-    // Update the deployment status with the exit code
-    await sendToMainThread("updateDeployment", {
-      deploymentId: deployment.id,
-      values: { exitCode, completedAt: new Date().toISOString() },
-    });
-    console.log(`Updated deployment status for ID: ${deployment.id}`);
-
-    parentPort.postMessage(
-      `Deployment for page ID ${pageId} completed with exit code ${exitCode}.`
-    );
+    process.exit(exitCode); // Exit with the appropriate code
   } catch (error) {
     console.error(`Error during deployment: ${error.message}`);
-    parentPort.postMessage(`Error during deployment: ${error.message}`);
+    process.exit(1); // Exit with failure code
   }
 })();
