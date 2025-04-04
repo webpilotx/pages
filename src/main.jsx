@@ -1,4 +1,4 @@
-import { StrictMode, useState, useEffect } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 
@@ -6,8 +6,6 @@ function App() {
   const [pagesList, setPagesList] = useState([]);
   const [repositories, setRepositories] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showCreatePage, setShowCreatePage] = useState(false);
-  const [createStep, setCreateStep] = useState(1); // Step 1: Choose repo, Step 2: Enter details
   const [selectedRepo, setSelectedRepo] = useState(null);
   const [branches, setBranches] = useState([]);
   const [pageName, setPageName] = useState("");
@@ -59,30 +57,6 @@ function App() {
       }
     } catch (error) {
       console.error("Error fetching branches:", error);
-    }
-  };
-
-  const fetchDeploymentLogs = async (pageId) => {
-    try {
-      const response = await fetch(`/pages/deployments/${pageId}.log`);
-      if (response.ok) {
-        const logs = await response.text();
-        setDeploymentLogs((prevLogs) => ({
-          ...prevLogs,
-          [pageId]: logs,
-        }));
-      } else {
-        setDeploymentLogs((prevLogs) => ({
-          ...prevLogs,
-          [pageId]: "Failed to fetch deployment logs.",
-        }));
-      }
-    } catch (error) {
-      console.error("Error fetching deployment logs:", error);
-      setDeploymentLogs((prevLogs) => ({
-        ...prevLogs,
-        [pageId]: "Error fetching deployment logs.",
-      }));
     }
   };
 
@@ -201,11 +175,6 @@ function App() {
     return () => {
       eventSource.close();
     };
-  };
-
-  const handleSelectRepo = (repo) => {
-    setSelectedRepo(repo);
-    fetchBranches(repo.full_name); // Fetch branches for the selected repository
   };
 
   const handleAddEnvVar = () => {
