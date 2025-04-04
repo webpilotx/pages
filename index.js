@@ -3,12 +3,18 @@ import "dotenv/config";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import express from "express";
+import fs from "fs/promises"; // Use fs/promises for promise-based file operations
 import fetch from "node-fetch"; // Import node-fetch
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import ViteExpress from "vite-express";
 import { Worker } from "worker_threads"; // Import Worker from worker_threads
-import { accountsTable, envsTable, pagesTable } from "./schema.js";
+import {
+  accountsTable,
+  deploymentsTable,
+  envsTable,
+  pagesTable,
+} from "./schema.js";
 
 // Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -326,7 +332,7 @@ app.get("/pages/api/deployments", async (req, res) => {
       .select()
       .from(deploymentsTable)
       .where(eq(deploymentsTable.pageId, pageId))
-      .orderBy(deploymentsTable.createdAt.desc());
+      .orderBy(deploymentsTable.createdAt);
 
     res.json(deployments);
   } catch (error) {
@@ -349,15 +355,14 @@ app.get("/pages/api/deployment-log", async (req, res) => {
       `${deploymentId}.log`
     );
 
-    const logExists = await fs
-      .access(logFilePath)
-      .then(() => true)
-      .catch(() => false);
-
-    if (!logExists) {
+    try {
+      // Check if the log file exists
+      await fs.access(logFilePath);
+    } catch {
       return res.status(404).json({ error: "Log file not found" });
     }
 
+    // Read the log file content
     const logContent = await fs.readFile(logFilePath, "utf-8");
     res.send(logContent);
   } catch (error) {
