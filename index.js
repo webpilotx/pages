@@ -75,8 +75,6 @@ app.get("/pages/api/github/callback", async (req, res) => {
         .json({ error: "Failed to retrieve access token", details: tokenData });
     }
 
-    console.log({ tokenData });
-
     const { access_token } = tokenData;
 
     if (!access_token) {
@@ -102,14 +100,12 @@ app.get("/pages/api/github/callback", async (req, res) => {
         .json({ error: "Failed to fetch user information", details: userData });
     }
 
-    console.log({ userData });
-
     const { login } = userData;
 
     await db.insert(accountsTable).values({ login, accessToken: access_token });
 
-    // Respond with success
-    res.json({ message: "GitHub account connected successfully" });
+    // Redirect to /pages on success
+    res.redirect("/pages");
   } catch (error) {
     console.error("Error handling GitHub callback:", error);
     res.status(500).json({
