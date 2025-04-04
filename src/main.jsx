@@ -76,9 +76,6 @@ function PageDetails({
         <p>
           <strong>Name:</strong> {selectedPage.name}
         </p>
-        <p>
-          <strong>Branch:</strong> {selectedPage.branch}
-        </p>
       </div>
       <div className="mb-4">
         <label className="block mb-2">Branch</label>
