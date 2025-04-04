@@ -126,25 +126,17 @@ function App() {
             <h2 className="text-2xl font-bold mb-4">
               Step 2: Choose Repository
             </h2>
-            <ul className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {repositories.map((repo) => (
-                <li
+                <div
                   key={repo.id}
                   className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700 cursor-pointer hover:bg-gray-700"
                   onClick={() => handleSelectRepository(repo.id)}
                 >
-                  <p>
-                    <strong>Name:</strong> {repo.name}
-                  </p>
-                  <p>
-                    <strong>Full Name:</strong> {repo.full_name}
-                  </p>
-                  <p>
-                    <strong>Private:</strong> {repo.private ? "Yes" : "No"}
-                  </p>
-                </li>
+                  <p className="font-bold">{repo.name}</p>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
       </main>
