@@ -68,38 +68,46 @@ const execPromise = (command) =>
     const logFilePath = path.join(logDir, `${deployment.id}.log`);
 
     let buildOutput = "No build script provided.";
+    let exitCode = 0;
+
     if (page.buildScript) {
       const buildCommand = `cd ${cloneDir} && ${page.buildScript}`;
       console.log(`Running build script: ${buildCommand}`);
-      buildOutput = await execPromise(buildCommand);
+      try {
+        buildOutput = await execPromise(buildCommand);
+      } catch (error) {
+        buildOutput = error.message;
+        exitCode = 1; // Non-zero exit code indicates failure
+      }
     }
 
     // Write the output to the log file
     await fs.writeFile(logFilePath, buildOutput);
 
-    // Update the deployment status to success
+    // Update the deployment status with the exit code
     await db
       .update(deploymentsTable)
-      .set({ exitCode: 0, completedAt: new Date().toISOString() })
+      .set({ exitCode, completedAt: new Date().toISOString() })
       .where(eq(deploymentsTable.id, deployment.id));
 
-    console.log(`Deployment for page ID ${pageId} completed successfully.`);
+    console.log(
+      `Deployment for page ID ${pageId} completed with exit code ${exitCode}.`
+    );
   } catch (error) {
     console.error("Error during deployment:", error);
 
-    // Insert a new deployment record if it doesn't exist
     const deploymentId = process.argv[2];
-    const logDir = path.join(process.env.PAGES_DIR, "logs");
+    const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fs.mkdir(logDir, { recursive: true });
     const logFilePath = path.join(logDir, `${deploymentId}.log`);
 
     // Write the error to the log file
     await fs.writeFile(logFilePath, error.message);
 
-    // Update the deployment status to failure
+    // Update the deployment status to failure with exit code 1
     await db
-      .update("deployments_table")
-      .set({ status: "failure" })
-      .where(eq("id", deploymentId));
+      .update(deploymentsTable)
+      .set({ exitCode: 1, completedAt: new Date().toISOString() })
+      .where(eq(deploymentsTable.id, deploymentId));
   }
 })();
