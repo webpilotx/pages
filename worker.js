@@ -1,13 +1,8 @@
-import { parentPort, workerData } from "worker_threads";
 import { exec } from "child_process";
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/libsql";
 import fs from "fs/promises";
 import path from "path";
-import { deploymentsTable, envsTable, pagesTable } from "./schema.js";
-import { eq } from "drizzle-orm";
-
-const db = drizzle(process.env.DB_FILE_NAME);
+import { parentPort, workerData } from "worker_threads";
 
 const execPromise = (command) =>
   new Promise((resolve, reject) => {
@@ -20,25 +15,30 @@ const execPromise = (command) =>
     });
   });
 
+const sendToMainThread = (action, data) =>
+  new Promise((resolve, reject) => {
+    parentPort.once("message", (response) => {
+      if (response.success) {
+        resolve(response.result);
+      } else {
+        reject(new Error(response.error));
+      }
+    });
+    parentPort.postMessage({ action, data });
+  });
+
 (async () => {
   try {
     const { pageId } = workerData;
 
     // Fetch page details
-    const [page] = await db
-      .select()
-      .from(pagesTable)
-      .where(eq(pagesTable.id, pageId));
-
+    const page = await sendToMainThread("fetchPageDetails", { pageId });
     if (!page) {
       throw new Error(`Page with ID ${pageId} not found`);
     }
 
     // Fetch environment variables
-    const envVars = await db
-      .select()
-      .from(envsTable)
-      .where(eq(envsTable.pageId, pageId));
+    const envVars = await sendToMainThread("fetchEnvVars", { pageId });
 
     // Determine the repository directory
     const cloneDir = path.join(process.env.PAGES_DIR, String(pageId));
@@ -69,12 +69,9 @@ const execPromise = (command) =>
     await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
 
     // Insert a new deployment record
-    const [deployment] = await db
-      .insert(deploymentsTable)
-      .values({
-        pageId: page.id,
-      })
-      .returning({ id: deploymentsTable.id });
+    const deployment = await sendToMainThread("insertDeployment", {
+      pageId: page.id,
+    });
 
     const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fs.mkdir(logDir, { recursive: true });
@@ -98,10 +95,10 @@ const execPromise = (command) =>
     await fs.writeFile(logFilePath, buildOutput);
 
     // Update the deployment status with the exit code
-    await db
-      .update(deploymentsTable)
-      .set({ exitCode, completedAt: new Date().toISOString() })
-      .where(eq(deploymentsTable.id, deployment.id));
+    await sendToMainThread("updateDeployment", {
+      deploymentId: deployment.id,
+      values: { exitCode, completedAt: new Date().toISOString() },
+    });
 
     parentPort.postMessage(
       `Deployment for page ID ${pageId} completed with exit code ${exitCode}.`

@@ -8,7 +8,7 @@ import fetch from "node-fetch"; // Import node-fetch
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import ViteExpress from "vite-express";
-import { Worker } from "worker_threads"; // Import Worker from worker_threads
+import { Worker, isMainThread, parentPort } from "worker_threads"; // Import Worker from worker_threads
 import {
   accountsTable,
   deploymentsTable,
@@ -245,14 +245,15 @@ app.get("/pages/api/github/callback", async (req, res) => {
 
 app.post("/pages/api/save-and-deploy", async (req, res) => {
   try {
-    const { selectedRepo, pageName, branch, buildScript, envVars } = req.body;
+    const { selectedRepo, pageName, branch, buildScript, envVars, editPage } =
+      req.body;
 
     if (!pageName || !branch) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     let page;
-    if (selectedRepo.id) {
+    if (editPage) {
       // Update existing page
       [page] = await db
         .update(pagesTable)
@@ -261,7 +262,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
           branch,
           buildScript: buildScript || null,
         })
-        .where(eq(pagesTable.id, selectedRepo.id))
+        .where(eq(pagesTable.id, editPage.id))
         .returning({ id: pagesTable.id });
     } else {
       // Insert new page
@@ -277,8 +278,8 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
     }
 
     // Delete existing environment variables for the page (if updating)
-    if (selectedRepo.id) {
-      await db.delete(envsTable).where(eq(envsTable.pageId, selectedRepo.id));
+    if (editPage) {
+      await db.delete(envsTable).where(eq(envsTable.pageId, editPage.id));
     }
 
     // Save environment variables to envsTable
@@ -382,6 +383,46 @@ const execPromise = (command) =>
     });
   });
 
-ViteExpress.listen(app, PORT, () =>
-  console.log(`Server is listening on port ${PORT}...`)
-);
+if (!isMainThread) {
+  // Handle database operations for worker threads
+  parentPort.on("message", async (message) => {
+    try {
+      const { action, data } = message;
+
+      if (action === "fetchPageDetails") {
+        const [page] = await db
+          .select()
+          .from(pagesTable)
+          .where(eq(pagesTable.id, data.pageId));
+        parentPort.postMessage({ success: true, result: page });
+      } else if (action === "fetchEnvVars") {
+        const envVars = await db
+          .select()
+          .from(envsTable)
+          .where(eq(envsTable.pageId, data.pageId));
+        parentPort.postMessage({ success: true, result: envVars });
+      } else if (action === "insertDeployment") {
+        const [deployment] = await db
+          .insert(deploymentsTable)
+          .values(data)
+          .returning({ id: deploymentsTable.id });
+        parentPort.postMessage({ success: true, result: deployment });
+      } else if (action === "updateDeployment") {
+        await db
+          .update(deploymentsTable)
+          .set(data.values)
+          .where(eq(deploymentsTable.id, data.deploymentId));
+        parentPort.postMessage({ success: true });
+      } else {
+        parentPort.postMessage({ success: false, error: "Unknown action" });
+      }
+    } catch (error) {
+      parentPort.postMessage({ success: false, error: error.message });
+    }
+  });
+} else {
+  // ...existing server code...
+  ViteExpress.listen(app, PORT, () =>
+    console.log(`Server is listening on port ${PORT}...`)
+  );
+}

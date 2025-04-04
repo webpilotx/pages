@@ -156,11 +156,12 @@ function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          selectedRepo: editPage || selectedRepo,
+          selectedRepo,
           pageName,
           branch,
           buildScript,
           envVars,
+          editPage, // Pass editPage to differentiate between creation and update
         }),
       });
 
@@ -198,6 +199,18 @@ function App() {
   const handleSelectDeployment = (deployment) => {
     setSelectedDeployment(deployment);
     fetchDeploymentLog(deployment.id, deployment.exitCode === null);
+  };
+
+  const handleCreatePage = () => {
+    setEditPage(null);
+    setPageName("");
+    setBranch("");
+    setBuildScript("");
+    setEnvVars([{ name: "", value: "" }]);
+    setSelectedRepo(null);
+    setShowCreatePage(true);
+    setCreateStep(1);
+    setActiveTab("details"); // Ensure the active tab is set to "details"
   };
 
   // Calculate the repositories to display for the current page
@@ -250,16 +263,7 @@ function App() {
         </ul>
 
         <button
-          onClick={() => {
-            setEditPage(null);
-            setPageName("");
-            setBranch("");
-            setBuildScript("");
-            setEnvVars([{ name: "", value: "" }]);
-            setSelectedRepo(null);
-            setShowCreatePage(true);
-            setCreateStep(1);
-          }}
+          onClick={handleCreatePage}
           className="mt-8 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
         >
           Create
