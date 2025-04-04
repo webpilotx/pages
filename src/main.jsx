@@ -161,10 +161,6 @@ function App() {
       const data = await response.json();
       console.log("Page saved and deployment triggered successfully:", data);
 
-      // Close the create page modal
-      setShowCreatePage(false);
-      setEditPage(null);
-
       // Refresh the pages list
       await fetchPagesList();
 
@@ -176,7 +172,7 @@ function App() {
       if (deployments.length > 0) {
         const latestDeployment = deployments[deployments.length - 1];
         setSelectedDeployment(latestDeployment);
-        fetchDeploymentLog(
+        await fetchDeploymentLog(
           latestDeployment.id,
           latestDeployment.exitCode === null
         );
@@ -509,7 +505,10 @@ function App() {
                         </div>
                       ) : (
                         <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
-                          <pre>{deploymentLogs || "No logs available for this deployment."}</pre>
+                          <pre>
+                            {deploymentLogs ||
+                              "No logs available for this deployment."}
+                          </pre>
                         </div>
                       )
                     ) : (
