@@ -69,71 +69,71 @@ function CreatePage({
   const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
   const [accounts, setAccounts] = useState([]);
   const [repositories, setRepositories] = useState([]);
-  const [loadingRepos, setLoadingRepos] = useState(false); // Loading state for repositories
-  const [loadingBranches, setLoadingBranches] = useState(false); // Loading state for branches
-  const [currentPage, setCurrentPage] = useState(1); // Current page for pagination
-  const reposPerPage = 6; // Number of repositories per page
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const reposPerPage = 6;
 
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchAccounts()
       .then((fetchedAccounts) => {
-        setAccounts(fetchedAccounts || []); // Ensure accounts is always an array
+        setAccounts(fetchedAccounts || []);
         if (fetchedAccounts?.length > 0) {
-          setSelectedAccount(fetchedAccounts[0].login); // Automatically select the first account
+          setSelectedAccount(fetchedAccounts[0].login);
         }
       })
       .catch((error) => {
         console.error("Error fetching accounts:", error);
-        setAccounts([]); // Fallback to an empty array on error
+        setAccounts([]);
       });
-  }, []); // Only run once on mount
+  }, []);
 
   useEffect(() => {
     if (selectedAccount) {
       setLoadingRepos(true);
       fetchRepositories(selectedAccount)
         .then((repos) => {
-          setRepositories(repos || []); // Ensure repositories is always an array
-          setCurrentPage(1); // Reset to the first page
+          setRepositories(repos || []);
+          setCurrentPage(1);
         })
         .catch((error) => {
           console.error("Error fetching repositories:", error);
-          setRepositories([]); // Fallback to an empty array on error
+          setRepositories([]);
         })
         .finally(() => setLoadingRepos(false));
     }
-  }, [selectedAccount]); // Run when selectedAccount changes
+  }, [selectedAccount]);
 
   useEffect(() => {
     if (repo) {
-      setLoadingBranches(true); // Start loading indicator
+      setLoadingBranches(true);
       fetchBranches(repo)
         .then((fetchedBranches) => {
-          setBranches(fetchedBranches || []); // Ensure branches is always an array
+          setBranches(fetchedBranches || []);
           if (fetchedBranches?.length > 0) {
-            setBranch(fetchedBranches[0]); // Auto-select the first branch
+            setBranch(fetchedBranches[0]);
           } else {
-            setBranch(""); // Clear branch if no branches are available
+            setBranch("");
           }
         })
         .catch((error) => {
           console.error("Error fetching branches:", error);
-          setBranches([]); // Fallback to an empty array on error
-          setBranch(""); // Clear branch on error
+          setBranches([]);
+          setBranch("");
         })
-        .finally(() => setLoadingBranches(false)); // Stop loading indicator
+        .finally(() => setLoadingBranches(false));
     }
-  }, [repo]); // Run when repo changes
+  }, [repo]);
 
   const handleAccountChange = (accountLogin) => {
-    setSelectedAccount(accountLogin); // Trigger repository loading via useEffect
+    setSelectedAccount(accountLogin);
   };
 
   const handleRepoSelect = (selectedRepo) => {
     if (repo !== selectedRepo) {
-      setRepo(selectedRepo); // Only update the selected repository if it changes
+      setRepo(selectedRepo);
     }
   };
 
@@ -158,7 +158,6 @@ function CreatePage({
     navigate("/pages");
   };
 
-  // Pagination logic
   const indexOfLastRepo = currentPage * reposPerPage;
   const indexOfFirstRepo = indexOfLastRepo - reposPerPage;
   const currentRepos = repositories.slice(indexOfFirstRepo, indexOfLastRepo);
@@ -216,7 +215,7 @@ function CreatePage({
                           : "border-gray-300"
                       }`}
                       onClick={() => handleRepoSelect(repository.full_name)}
-                      title={repository.full_name} // Tooltip for full name
+                      title={repository.full_name}
                     >
                       <span className="block truncate">
                         {repository.full_name}
@@ -346,7 +345,7 @@ function CreatePage({
                 </button>
                 <button
                   type="submit"
-                  disabled={!name || !branch} // Disable button if required fields are empty
+                  disabled={!name || !branch}
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
                 >
                   Save and Deploy
@@ -364,275 +363,8 @@ function CreatePage({
   );
 }
 
-function PageDetails({
-  selectedPage,
-  branches,
-  fetchBranches,
-  handleSaveAndDeploy,
-}) {
-  const [branch, setBranch] = useState(selectedPage.branch || "");
-  const [buildScript, setBuildScript] = useState(
-    selectedPage.buildScript || ""
-  );
-  const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
-
-  useEffect(() => {
-    fetchBranches(selectedPage.repo);
-  }, [selectedPage.repo, fetchBranches]);
-
-  const handleAddEnvVar = () => {
-    setEnvVars([...envVars, { name: "", value: "" }]);
-  };
-
-  const handleRemoveEnvVar = (index) => {
-    const updatedEnvVars = envVars.filter((_, i) => i !== index);
-    setEnvVars(updatedEnvVars);
-  };
-
-  const handleEnvVarChange = (index, field, value) => {
-    const updatedEnvVars = [...envVars];
-    updatedEnvVars[index][field] = value;
-    setEnvVars(updatedEnvVars);
-  };
-
-  return (
-    <div>
-      <div className="mb-4">
-        <h2 className="text-2xl font-bold mb-4">Page Details</h2>
-        <p>
-          <strong>Repo:</strong> {selectedPage.repo}
-        </p>
-        <p>
-          <strong>Name:</strong> {selectedPage.name}
-        </p>
-      </div>
-      <div className="mb-4">
-        <label className="block mb-2">Branch</label>
-        <select
-          value={branch}
-          onChange={(e) => setBranch(e.target.value)}
-          className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-          required
-        >
-          <option value="" disabled>
-            Select a branch
-          </option>
-          {branches.map((branch) => (
-            <option key={branch} value={branch}>
-              {branch}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="mb-4">
-        <label className="block mb-2">Build Script (Optional)</label>
-        <textarea
-          value={buildScript}
-          onChange={(e) => setBuildScript(e.target.value)}
-          className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-          rows="4"
-        ></textarea>
-      </div>
-      <div className="mb-4">
-        <label className="block mb-2">Environment Variables</label>
-        {envVars.map((env, index) => (
-          <div key={index} className="flex space-x-4 mb-2">
-            <input
-              type="text"
-              placeholder="Name"
-              value={env.name}
-              onChange={(e) =>
-                handleEnvVarChange(index, "name", e.target.value)
-              }
-              className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-              required
-            />
-            <input
-              type="text"
-              placeholder="Value"
-              value={env.value}
-              onChange={(e) =>
-                handleEnvVarChange(index, "value", e.target.value)
-              }
-              className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-              required
-            />
-            <button
-              onClick={() => handleRemoveEnvVar(index)}
-              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-        <button
-          onClick={handleAddEnvVar}
-          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-        >
-          Add Env
-        </button>
-      </div>
-      <button
-        onClick={() => handleSaveAndDeploy(branch, buildScript, envVars)}
-        disabled={!branch || !selectedPage.name}
-        className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-      >
-        Save and Deploy
-      </button>
-    </div>
-  );
-}
-
-function DeploymentLogs({
-  deployments,
-  selectedDeployment,
-  handleSelectDeployment,
-  fetchDeploymentLog,
-}) {
-  const [logContent, setLogContent] = useState("");
-
-  useEffect(() => {
-    if (selectedDeployment) {
-      fetchDeploymentLog(selectedDeployment.id).then(setLogContent);
-    }
-  }, [selectedDeployment, fetchDeploymentLog]);
-
-  return (
-    <div>
-      <h3 className="text-xl font-bold mb-4">Deployment Logs</h3>
-      <div className="mb-4">
-        <ul className="space-y-2">
-          {deployments.map((deployment) => (
-            <li
-              key={deployment.id}
-              className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
-                selectedDeployment?.id === deployment.id
-                  ? "border-blue-500"
-                  : "border-gray-300"
-              }`}
-              onClick={() => handleSelectDeployment(deployment)}
-            >
-              <p>
-                <strong>Start Time:</strong>{" "}
-                {new Date(deployment.createdAt).toLocaleString()}
-              </p>
-              <p>
-                <strong>Status:</strong>{" "}
-                {deployment.exitCode === null
-                  ? "Running"
-                  : deployment.exitCode === 0
-                  ? "Success"
-                  : "Failed"}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </div>
-      {selectedDeployment ? (
-        <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
-          <pre>{logContent || "No logs available for this deployment."}</pre>
-        </div>
-      ) : (
-        <div className="text-center text-gray-500">No deployment selected.</div>
-      )}
-    </div>
-  );
-}
-
-function PageDetailsWrapper({
-  pagesList,
-  fetchBranches,
-  fetchDeployments,
-  handleSaveAndDeploy,
-}) {
-  const [selectedPage, setSelectedPage] = useState(null);
-  const [branches, setBranches] = useState([]);
-  const [deployments, setDeployments] = useState([]);
-  const [selectedDeployment, setSelectedDeployment] = useState(null);
-  const [activeTab, setActiveTab] = useState("details");
-  const navigate = useNavigate();
-
-  const fetchPageData = (pageId) => {
-    const page = pagesList.find((p) => p.id === pageId);
-    if (page) {
-      setSelectedPage(page);
-      fetchBranches(page.repo);
-      fetchDeployments(page.id);
-    }
-  };
-
-  useEffect(() => {
-    const pageId = window.location.pathname.split("/").pop();
-    fetchPageData(pageId);
-  }, [pagesList]);
-
-  const handleBackToPagesList = () => {
-    navigate("/pages");
-  };
-
-  return (
-    selectedPage && (
-      <div>
-        <button
-          onClick={handleBackToPagesList}
-          className="mb-4 px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
-        >
-          Back to Pages List
-        </button>
-        <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
-          <div className="mb-4">
-            <div className="flex space-x-4 border-b border-gray-300">
-              <button
-                onClick={() => setActiveTab("details")}
-                className={`px-4 py-2 ${
-                  activeTab === "details"
-                    ? "border-b-2 border-blue-500 text-blue-500"
-                    : "text-gray-500"
-                }`}
-              >
-                Page Details
-              </button>
-              <button
-                onClick={() => setActiveTab("logs")}
-                className={`px-4 py-2 ${
-                  activeTab === "logs"
-                    ? "border-b-2 border-blue-500 text-blue-500"
-                    : "text-gray-500"
-                }`}
-              >
-                Deployment Logs
-              </button>
-            </div>
-          </div>
-          {activeTab === "details" && (
-            <PageDetails
-              selectedPage={selectedPage}
-              branches={branches}
-              fetchBranches={fetchBranches}
-              handleSaveAndDeploy={handleSaveAndDeploy}
-            />
-          )}
-          {activeTab === "logs" && (
-            <DeploymentLogs
-              deployments={deployments}
-              selectedDeployment={selectedDeployment}
-              handleSelectDeployment={setSelectedDeployment}
-              fetchDeploymentLog={(id) => {}}
-            />
-          )}
-        </div>
-      </div>
-    )
-  );
-}
-
 function App() {
   const [pagesList, setPagesList] = useState([]);
-  const [selectedPage, setSelectedPage] = useState(null);
-  const [branches, setBranches] = useState([]);
-  const [deployments, setDeployments] = useState([]);
-  const [selectedDeployment, setSelectedDeployment] = useState(null);
-  const [activeTab, setActiveTab] = useState("details");
 
   const fetchPagesList = async () => {
     try {
@@ -644,142 +376,9 @@ function App() {
     }
   };
 
-  const fetchBranches = async (repoFullName) => {
-    try {
-      const response = await fetch(`/pages/api/branches?repo=${repoFullName}`);
-      const data = await response.json();
-      setBranches(data.branches);
-    } catch (error) {
-      console.error("Error fetching branches:", error);
-    }
-  };
-
-  const fetchDeployments = async (pageId) => {
-    try {
-      const response = await fetch(`/pages/api/deployments?pageId=${pageId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setDeployments(data);
-      } else {
-        console.error("Failed to fetch deployments.");
-      }
-    } catch (error) {
-      console.error("Error fetching deployments:", error);
-    }
-  };
-
-  const fetchDeploymentLog = async (deploymentId) => {
-    try {
-      const response = await fetch(
-        `/pages/api/deployment-log?deploymentId=${deploymentId}`
-      );
-      if (response.ok) {
-        return await response.text();
-      } else {
-        console.error("Failed to fetch deployment logs.");
-        return "Failed to fetch deployment logs.";
-      }
-    } catch (error) {
-      console.error("Error fetching deployment log:", error);
-      return "Error fetching deployment log.";
-    }
-  };
-
-  const handleSaveAndDeploy = async (branch, buildScript, envVars) => {
-    try {
-      if (!selectedPage.repo) {
-        alert("Repository is not selected.");
-        return;
-      }
-
-      const response = await fetch("/pages/api/save-and-deploy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          selectedRepo: { full_name: selectedPage.repo }, // Pass repo full_name
-          pageName: selectedPage.name,
-          branch,
-          buildScript,
-          envVars,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error during save and deploy:", errorData);
-        alert("Failed to save and deploy: " + errorData.error);
-        return;
-      }
-
-      const data = await response.json();
-      console.log("Page saved and deployment triggered successfully:", data);
-
-      await fetchPagesList();
-      await fetchDeployments(selectedPage.id);
-      setActiveTab("logs");
-    } catch (error) {
-      console.error("Error during save and deploy:", error);
-      alert("Failed to save and deploy: " + error.message);
-    }
-  };
-
-  const handleCreateNewPage = async (newPage) => {
-    try {
-      const response = await fetch("/pages/api/create-page", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newPage),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create page");
-      }
-
-      await fetchPagesList();
-    } catch (error) {
-      console.error("Error creating page:", error);
-    }
-  };
-
-  const fetchRepositories = async (accountLogin) => {
-    try {
-      const response = await fetch(
-        `/pages/api/repositories?account=${accountLogin}`
-      );
-      const data = await response.json();
-      return data.repositories;
-    } catch (error) {
-      console.error("Error fetching repositories:", error);
-      return [];
-    }
-  };
-
-  const fetchAccounts = async () => {
-    try {
-      const response = await fetch("/pages/api/provider-accounts");
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error fetching accounts:", error);
-      return [];
-    }
-  };
-
   useEffect(() => {
     fetchPagesList();
   }, []);
-
-  const handleSelectPage = (page) => {
-    setSelectedPage(page);
-    fetchBranches(page.repo);
-    fetchDeployments(page.id);
-    setActiveTab("details");
-  };
-
-  const handleBackToPagesList = () => {
-    setSelectedPage(null);
-    setActiveTab("details");
-  };
 
   return (
     <Router>
@@ -799,31 +398,17 @@ function App() {
             <Route
               path="/pages"
               element={
-                <PagesList
-                  pagesList={pagesList}
-                  handleSelectPage={handleSelectPage}
-                />
+                <PagesList pagesList={pagesList} handleSelectPage={() => {}} />
               }
             />
             <Route
               path="/pages/new"
               element={
                 <CreatePage
-                  handleCreateNewPage={handleCreateNewPage}
-                  fetchAccounts={fetchAccounts}
-                  fetchRepositories={fetchRepositories}
-                  fetchBranches={fetchBranches}
-                />
-              }
-            />
-            <Route
-              path="/pages/:id"
-              element={
-                <PageDetailsWrapper
-                  pagesList={pagesList}
-                  fetchBranches={fetchBranches}
-                  fetchDeployments={fetchDeployments}
-                  handleSaveAndDeploy={handleSaveAndDeploy}
+                  handleCreateNewPage={() => {}}
+                  fetchAccounts={() => {}}
+                  fetchRepositories={() => {}}
+                  fetchBranches={() => {}}
                 />
               }
             />
@@ -835,14 +420,7 @@ function App() {
 }
 
 const container = document.getElementById("root");
-let root;
-
-// Check if the root already exists
-if (!container._reactRootContainer) {
-  root = createRoot(container); // Create a new root if it doesn't exist
-} else {
-  root = container._reactRootContainer._internalRoot.current; // Reuse the existing root
-}
+const root = createRoot(container);
 
 root.render(
   <StrictMode>
