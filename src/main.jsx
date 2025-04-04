@@ -811,9 +811,14 @@ function App() {
 }
 
 const container = document.getElementById("root");
-let root = container._reactRootContainer
-  ? container._reactRootContainer._internalRoot.current
-  : createRoot(container);
+let root;
+
+// Check if the root already exists
+if (!container._reactRootContainer) {
+  root = createRoot(container); // Create a new root if it doesn't exist
+} else {
+  root = container._reactRootContainer._internalRoot.current; // Reuse the existing root
+}
 
 root.render(
   <StrictMode>
