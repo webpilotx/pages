@@ -1,6 +1,10 @@
 import "dotenv/config";
 import express from "express";
 import ViteExpress from "vite-express";
+import "dotenv/config";
+import { drizzle } from "drizzle-orm/libsql";
+
+const db = drizzle(process.env.DB_FILE_NAME);
 
 const app = express();
 
