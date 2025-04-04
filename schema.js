@@ -1,6 +1,16 @@
 import { sql } from "drizzle-orm";
 import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+export const accountsTable = sqliteTable("accounts_table", {
+  providerAccountId: text().primaryKey(),
+  provider: text().notNull(),
+  type: text().notNull(),
+  createdAt: text()
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text(),
+});
+
 export const pagesTable = sqliteTable("pages_table", {
   id: int().primaryKey({ autoIncrement: true }),
   repo: text().notNull(),
