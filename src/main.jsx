@@ -168,7 +168,16 @@ function App() {
         </ul>
 
         <button
-          onClick={() => setShowCreatePage(true)}
+          onClick={() => {
+            setEditPage(null);
+            setPageName("");
+            setBranch("");
+            setBuildScript("");
+            setEnvVars([{ name: "", value: "" }]);
+            setSelectedRepo(null);
+            setShowCreatePage(true);
+            setCreateStep(1);
+          }}
           className="mt-8 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
         >
           Create
@@ -229,6 +238,22 @@ function App() {
                     ? "Edit Page Details"
                     : "Step 2: Enter Page Details"}
                 </h2>
+                {editPage && (
+                  <div className="mb-4">
+                    <label className="block mb-2">Repository</label>
+                    <p className="px-4 py-2 bg-gray-200 text-black rounded-md">
+                      {editPage.repo}
+                    </p>
+                  </div>
+                )}
+                {!editPage && selectedRepo && (
+                  <div className="mb-4">
+                    <label className="block mb-2">Repository</label>
+                    <p className="px-4 py-2 bg-gray-200 text-black rounded-md">
+                      {selectedRepo.full_name}
+                    </p>
+                  </div>
+                )}
                 <div className="mb-4">
                   <label className="block mb-2">Page Name</label>
                   <input
@@ -237,6 +262,7 @@ function App() {
                     onChange={(e) => setPageName(e.target.value)}
                     className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
                     required
+                    disabled={!!editPage} // Disable input if editing an existing page
                   />
                 </div>
                 <div className="mb-4">
