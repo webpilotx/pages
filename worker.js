@@ -1,8 +1,9 @@
-import { drizzle } from "drizzle-orm/libsql";
 import { exec } from "child_process";
+import "dotenv/config";
+import { drizzle } from "drizzle-orm/libsql";
 import fs from "fs/promises";
 import path from "path";
-import "dotenv/config";
+import { envsTable, pagesTable } from "./schema";
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
@@ -27,8 +28,8 @@ const execPromise = (command) =>
     // Fetch page details
     const [page] = await db
       .select()
-      .from("pages_table")
-      .where(eq("id", pageId));
+      .from(pagesTable)
+      .where(eq(pagesTable.id, pageId));
 
     if (!page) {
       throw new Error(`Page with ID ${pageId} not found`);
@@ -37,8 +38,8 @@ const execPromise = (command) =>
     // Fetch environment variables
     const envVars = await db
       .select()
-      .from("envs_table")
-      .where(eq("pageId", pageId));
+      .from(envsTable)
+      .where(eq(envsTable.pageId, pageId));
 
     // Clone the repository
     const cloneDir = path.join(process.env.PAGES_DIR, String(pageId));

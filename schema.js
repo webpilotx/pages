@@ -15,7 +15,7 @@ export const pagesTable = sqliteTable("pages_table", {
   repo: text().notNull(),
   name: text().notNull(),
   branch: text().notNull(),
-  buildScript: text().notNull(),
+  buildScript: text(),
   createdAt: text()
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),

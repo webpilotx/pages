@@ -57,6 +57,13 @@
       "when": 1743742700938,
       "tag": "0007_needy_magma",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1743742865698,
+      "tag": "0008_dry_hydra",
+      "breakpoints": true
     }
   ]
 }
