@@ -410,6 +410,15 @@ function CreatePage() {
   );
 }
 
+function PageDetails({ pageId }) {
+  return (
+    <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
+      <h2 className="text-2xl font-bold mb-4">Page Details</h2>
+      <p>Details for page ID: {pageId}</p>
+    </div>
+  );
+}
+
 function App() {
   const [pagesList, setPagesList] = useState([]);
 
@@ -449,6 +458,14 @@ function App() {
               }
             />
             <Route path="/pages/new" element={<CreatePage />} />
+            <Route
+              path="/pages/:id"
+              element={
+                <PageDetails
+                  pageId={window.location.pathname.split("/").pop()}
+                />
+              }
+            />
           </Routes>
         </main>
       </div>
