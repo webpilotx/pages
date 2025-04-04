@@ -17,7 +17,7 @@ function PagesList({ pagesList, handleSelectPage }) {
 
   const handlePageClick = (page) => {
     handleSelectPage(page);
-    navigate(`/pages/${page.id}`);
+    navigate(`/pages/${page.id}/edit`); // Navigate to /pages/:id/edit by default
   };
 
   const handleCreatePage = () => {
