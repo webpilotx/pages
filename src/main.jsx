@@ -105,6 +105,25 @@ function CreatePage({
     }
   }, [selectedAccount]); // Run when selectedAccount changes
 
+  useEffect(() => {
+    if (repo) {
+      fetchBranches(repo)
+        .then((fetchedBranches) => {
+          setBranches(fetchedBranches || []); // Ensure branches is always an array
+          if (fetchedBranches?.length > 0) {
+            setBranch(fetchedBranches[0]); // Auto-select the first branch
+          } else {
+            setBranch(""); // Clear branch if no branches are available
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching branches:", error);
+          setBranches([]); // Fallback to an empty array on error
+          setBranch(""); // Clear branch on error
+        });
+    }
+  }, [repo]); // Run when repo changes
+
   const handleAccountChange = (accountLogin) => {
     setSelectedAccount(accountLogin); // Trigger repository loading via useEffect
   };
@@ -112,17 +131,6 @@ function CreatePage({
   const handleRepoSelect = (selectedRepo) => {
     if (repo !== selectedRepo) {
       setRepo(selectedRepo); // Only update the selected repository if it changes
-      fetchBranches(selectedRepo)
-        .then((fetchedBranches) => {
-          setBranches(fetchedBranches || []); // Ensure branches is always an array
-          if (fetchedBranches?.length > 0) {
-            setBranch(fetchedBranches[0]); // Default to the first branch
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching branches:", error);
-          setBranches([]); // Fallback to an empty array on error
-        });
     }
   };
 
@@ -331,7 +339,8 @@ function CreatePage({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              disabled={!name || !branch} // Disable button if required fields are empty
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
             >
               Save and Deploy
             </button>
