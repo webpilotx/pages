@@ -66,7 +66,13 @@ function CreatePage({ handleCreateNewPage, fetchAccounts, fetchRepositories }) {
 
   useEffect(() => {
     if (step === 1) {
-      fetchAccounts().then(setAccounts);
+      fetchAccounts().then((fetchedAccounts) => {
+        setAccounts(fetchedAccounts);
+        if (fetchedAccounts.length > 0) {
+          setSelectedAccount(fetchedAccounts[0].login); // Automatically select the first account
+          fetchRepositories(fetchedAccounts[0].login).then(setRepositories);
+        }
+      });
     } else if (step === 2 && selectedAccount) {
       fetchRepositories(selectedAccount).then(setRepositories);
     }
@@ -108,7 +114,10 @@ function CreatePage({ handleCreateNewPage, fetchAccounts, fetchRepositories }) {
           <label className="block mb-2">Provider Account</label>
           <select
             value={selectedAccount}
-            onChange={(e) => setSelectedAccount(e.target.value)}
+            onChange={(e) => {
+              setSelectedAccount(e.target.value);
+              fetchRepositories(e.target.value).then(setRepositories);
+            }}
             className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
             required
           >
@@ -151,21 +160,42 @@ function CreatePage({ handleCreateNewPage, fetchAccounts, fetchRepositories }) {
       {step === 2 && (
         <div>
           <label className="block mb-2">Repository</label>
-          <select
-            value={repo}
-            onChange={(e) => setRepo(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-            required
-          >
-            <option value="" disabled>
-              Select a repository
-            </option>
-            {repositories.map((repository) => (
-              <option key={repository.full_name} value={repository.full_name}>
-                {repository.full_name}
-              </option>
-            ))}
-          </select>
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white border border-gray-300">
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 border-b">Full Name</th>
+                  <th className="px-4 py-2 border-b">Description</th>
+                  <th className="px-4 py-2 border-b">Visibility</th>
+                  <th className="px-4 py-2 border-b">Select</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repositories.map((repository) => (
+                  <tr key={repository.full_name}>
+                    <td className="px-4 py-2 border-b">
+                      {repository.full_name}
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      {repository.description || "No description"}
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      {repository.private ? "Private" : "Public"}
+                    </td>
+                    <td className="px-4 py-2 border-b text-center">
+                      <input
+                        type="radio"
+                        name="repository"
+                        value={repository.full_name}
+                        checked={repo === repository.full_name}
+                        onChange={(e) => setRepo(e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="mt-4 flex justify-between">
             <button
               onClick={handleBack}
