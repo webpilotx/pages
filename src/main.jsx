@@ -9,11 +9,12 @@ function App() {
   const [showCreatePage, setShowCreatePage] = useState(false);
   const [createStep, setCreateStep] = useState(1); // Step 1: Choose repo, Step 2: Enter details
   const [selectedRepo, setSelectedRepo] = useState(null);
+  const [branches, setBranches] = useState([]);
   const [pageName, setPageName] = useState("");
   const [branch, setBranch] = useState("");
   const [buildScript, setBuildScript] = useState("");
   const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
-  const repositoriesPerPage = 12; // Update to display 12 repositories per page
+  const repositoriesPerPage = 12; // Display 12 repositories per page
 
   useEffect(() => {
     async function fetchPagesList() {
@@ -40,20 +41,28 @@ function App() {
     fetchAllRepositories();
   }, []);
 
-  // Calculate the repositories to display for the current page
-  const paginatedRepositories = repositories.slice(
-    (currentPage - 1) * repositoriesPerPage,
-    currentPage * repositoriesPerPage
-  );
+  const fetchBranches = async (repoFullName) => {
+    try {
+      const response = await fetch(`/pages/api/branches?repo=${repoFullName}`);
+      const data = await response.json();
+      setBranches(data.branches);
+    } catch (error) {
+      console.error("Error fetching branches:", error);
+    }
+  };
 
-  const totalPages = Math.ceil(repositories.length / repositoriesPerPage);
-
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage); // Update the current page
+  const handleSelectRepo = (repo) => {
+    setSelectedRepo(repo);
+    fetchBranches(repo.full_name); // Fetch branches for the selected repository
   };
 
   const handleAddEnvVar = () => {
     setEnvVars([...envVars, { name: "", value: "" }]);
+  };
+
+  const handleRemoveEnvVar = (index) => {
+    const updatedEnvVars = envVars.filter((_, i) => i !== index);
+    setEnvVars(updatedEnvVars);
   };
 
   const handleEnvVarChange = (index, field, value) => {
@@ -74,14 +83,26 @@ function App() {
     setShowCreatePage(false); // Close the create page modal
   };
 
+  // Calculate the repositories to display for the current page
+  const paginatedRepositories = repositories.slice(
+    (currentPage - 1) * repositoriesPerPage,
+    currentPage * repositoriesPerPage
+  );
+
+  const totalPages = Math.ceil(repositories.length / repositoriesPerPage);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage); // Update the current page
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-900 text-white">
+    <div className="min-h-screen flex flex-col bg-white text-black">
       {/* Navigation Bar */}
-      <nav className="bg-gray-800 border-b border-gray-700">
+      <nav className="bg-gray-200 border-b border-gray-300">
         <div className="container mx-auto px-4 py-3 flex items-center">
           <a
             href="/"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
           >
             Home
           </a>
@@ -95,7 +116,7 @@ function App() {
           {pagesList.map((page) => (
             <li
               key={page.id}
-              className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700"
+              className="p-4 bg-gray-100 rounded-md shadow-sm border border-gray-300"
             >
               <p>
                 <strong>Repo:</strong> {page.repo}
@@ -115,13 +136,13 @@ function App() {
 
         <button
           onClick={() => setShowCreatePage(true)}
-          className="mt-8 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          className="mt-8 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
         >
           Create
         </button>
 
         {showCreatePage && (
-          <div className="mt-8 p-6 bg-gray-800 rounded-md shadow-lg">
+          <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
             {createStep === 1 && (
               <div>
                 <h2 className="text-2xl font-bold mb-4">
@@ -131,15 +152,14 @@ function App() {
                   {paginatedRepositories.map((repo) => (
                     <div
                       key={repo.id}
-                      className={`p-4 bg-gray-700 rounded-md shadow-sm border ${
+                      className={`p-4 bg-gray-200 rounded-md shadow-sm border ${
                         selectedRepo?.id === repo.id
                           ? "border-blue-500"
-                          : "border-gray-600"
-                      } cursor-pointer hover:bg-gray-600`}
-                      onClick={() => setSelectedRepo(repo)}
+                          : "border-gray-300"
+                      } cursor-pointer hover:bg-gray-300`}
+                      onClick={() => handleSelectRepo(repo)}
                     >
-                      <p className="font-bold truncate">{repo.full_name}</p>{" "}
-                      {/* Add truncate */}
+                      <p className="font-bold truncate">{repo.full_name}</p>
                     </div>
                   ))}
                 </div>
@@ -147,14 +167,14 @@ function App() {
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-200 text-gray-500 rounded-md hover:bg-gray-300 disabled:opacity-50"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-200 text-gray-500 rounded-md hover:bg-gray-300 disabled:opacity-50"
                   >
                     Next
                   </button>
@@ -162,7 +182,7 @@ function App() {
                 <button
                   onClick={() => setCreateStep(2)}
                   disabled={!selectedRepo}
-                  className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
                 >
                   Begin Setup
                 </button>
@@ -180,7 +200,7 @@ function App() {
                     type="text"
                     value={pageName}
                     onChange={(e) => setPageName(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 text-white rounded-md"
+                    className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
                   />
                 </div>
                 <div className="mb-4">
@@ -188,10 +208,10 @@ function App() {
                   <select
                     value={branch}
                     onChange={(e) => setBranch(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 text-white rounded-md"
+                    className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
                   >
                     <option value="">Select a branch</option>
-                    {selectedRepo?.branches?.map((branch) => (
+                    {branches.map((branch) => (
                       <option key={branch} value={branch}>
                         {branch}
                       </option>
@@ -203,7 +223,7 @@ function App() {
                   <textarea
                     value={buildScript}
                     onChange={(e) => setBuildScript(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 text-white rounded-md"
+                    className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
                     rows="4"
                   ></textarea>
                 </div>
@@ -218,7 +238,7 @@ function App() {
                         onChange={(e) =>
                           handleEnvVarChange(index, "name", e.target.value)
                         }
-                        className="w-1/2 px-4 py-2 bg-gray-700 text-white rounded-md"
+                        className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
                       />
                       <input
                         type="text"
@@ -227,20 +247,26 @@ function App() {
                         onChange={(e) =>
                           handleEnvVarChange(index, "value", e.target.value)
                         }
-                        className="w-1/2 px-4 py-2 bg-gray-700 text-white rounded-md"
+                        className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
                       />
+                      <button
+                        onClick={() => handleRemoveEnvVar(index)}
+                        className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                      >
+                        Remove
+                      </button>
                     </div>
                   ))}
                   <button
                     onClick={handleAddEnvVar}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                   >
                     Add Env
                   </button>
                 </div>
                 <button
                   onClick={handleSaveAndDeploy}
-                  className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                 >
                   Save and Deploy
                 </button>
