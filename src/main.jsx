@@ -129,15 +129,18 @@ function App() {
             <ul className="space-y-4">
               {repositories.map((repo) => (
                 <li
-                  key={repo.providerAccountId}
+                  key={repo.id}
                   className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700 cursor-pointer hover:bg-gray-700"
-                  onClick={() => handleSelectRepository(repo.providerAccountId)}
+                  onClick={() => handleSelectRepository(repo.id)}
                 >
                   <p>
-                    <strong>Repository:</strong> {repo.providerAccountId}
+                    <strong>Name:</strong> {repo.name}
                   </p>
                   <p>
-                    <strong>Provider:</strong> {repo.provider}
+                    <strong>Full Name:</strong> {repo.full_name}
+                  </p>
+                  <p>
+                    <strong>Private:</strong> {repo.private ? "Yes" : "No"}
                   </p>
                 </li>
               ))}

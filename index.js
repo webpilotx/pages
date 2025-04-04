@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import express from "express";
 import ViteExpress from "vite-express";
 import { accountsTable, pagesTable } from "./schema.js";
+import { eq } from "drizzle-orm";
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
@@ -37,11 +38,46 @@ app.get("/pages/api/pages-list", async (req, res) => {
 
 app.get("/pages/api/repositories", async (req, res) => {
   try {
-    const repositories = await db.select().from(accountsTable); // Assuming repositories are stored in accountsTable
+    const { providerAccountId } = req.query;
+
+    if (!providerAccountId) {
+      return res
+        .status(400)
+        .json({ error: "Missing providerAccountId parameter" });
+    }
+
+    // Fetch the access token for the given provider account
+    const [account] = await db
+      .select({
+        accessToken: accountsTable.accessToken,
+      })
+      .from(accountsTable)
+      .where(eq(accountsTable.login, providerAccountId));
+
+    // Use the access token to fetch repositories from GitHub's API
+    const response = await fetch("https://api.github.com/user/repos", {
+      headers: {
+        Authorization: `Bearer ${account.accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Error fetching repositories from GitHub:", errorData);
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch repositories", details: errorData });
+    }
+
+    const repositories = await response.json();
+
+    // Respond with the list of repositories
     res.json(repositories);
   } catch (error) {
     console.error("Error fetching repositories:", error);
-    res.status(500).json({ error: "Failed to fetch repositories" });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch repositories", details: error.message });
   }
 });
 
