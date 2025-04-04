@@ -98,29 +98,38 @@ function App() {
 
     try {
       setIsLoadingLog(true);
-      const response = await fetch(
-        `/pages/api/deployment-log?deploymentId=${deploymentId}`
-      );
-      if (response.ok) {
-        const logs = await response.text();
-        setDeploymentLogs(logs);
 
-        // If the deployment is still running, poll for updates
-        if (isRunning) {
-          const interval = setInterval(async () => {
-            const updatedResponse = await fetch(
-              `/pages/api/deployment-log?deploymentId=${deploymentId}`
-            );
-            if (updatedResponse.ok) {
-              const updatedLogs = await updatedResponse.text();
-              setDeploymentLogs(updatedLogs);
-            } else {
-              clearInterval(interval);
-            }
-          }, 3000); // Poll every 3 seconds
+      const fetchLogs = async () => {
+        const response = await fetch(
+          `/pages/api/deployment-log?deploymentId=${deploymentId}`
+        );
+        if (response.ok) {
+          const logs = await response.text();
+          setDeploymentLogs(logs);
+        } else {
+          setDeploymentLogs("Failed to fetch deployment logs.");
         }
-      } else {
-        setDeploymentLogs("Failed to fetch deployment logs.");
+      };
+
+      // Fetch logs initially
+      await fetchLogs();
+
+      // If the deployment is still running, poll for updates
+      if (isRunning) {
+        const interval = setInterval(async () => {
+          await fetchLogs();
+          const updatedResponse = await fetch(
+            `/pages/api/deployments?pageId=${selectedDeployment.pageId}`
+          );
+          const updatedDeployments = await updatedResponse.json();
+          const updatedDeployment = updatedDeployments.find(
+            (d) => d.id === deploymentId
+          );
+
+          if (updatedDeployment && updatedDeployment.exitCode !== null) {
+            clearInterval(interval); // Stop polling when the deployment is complete
+          }
+        }, 3000); // Poll every 3 seconds
       }
     } catch (error) {
       console.error("Error fetching deployment log:", error);

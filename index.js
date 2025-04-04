@@ -2,7 +2,7 @@ import "dotenv/config";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import express from "express";
-import fs from "fs/promises"; // Use fs/promises for promise-based file operations
+import fs, { promises as fsPromises } from "fs"; // Import both fs and fs/promises
 import fetch from "node-fetch"; // Import node-fetch
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
@@ -365,14 +365,19 @@ app.get("/pages/api/deployment-log", async (req, res) => {
 
     try {
       // Check if the log file exists
-      await fs.access(logFilePath);
+      await fsPromises.access(logFilePath);
     } catch {
       return res.status(404).json({ error: "Log file not found" });
     }
 
-    // Read the log file content
-    const logContent = await fs.readFile(logFilePath, "utf-8");
-    res.send(logContent);
+    // Stream the log file content
+    const logStream = fs.createReadStream(logFilePath, { encoding: "utf-8" });
+    logStream.pipe(res);
+
+    logStream.on("error", (error) => {
+      console.error("Error streaming log file:", error);
+      res.status(500).json({ error: "Failed to stream log file" });
+    });
   } catch (error) {
     console.error("Error fetching deployment log:", error);
     res.status(500).json({ error: "Failed to fetch deployment log" });
