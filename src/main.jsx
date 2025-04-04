@@ -91,6 +91,11 @@ function App() {
   };
 
   const fetchDeploymentLog = async (deploymentId, isRunning) => {
+    if (!deploymentId) {
+      setDeploymentLogs("No deployment selected.");
+      return;
+    }
+
     try {
       setIsLoadingLog(true);
       const response = await fetch(
@@ -485,13 +490,19 @@ function App() {
                         ))}
                       </ul>
                     </div>
-                    {isLoadingLog ? (
-                      <div className="text-center text-gray-500">
-                        Loading logs...
-                      </div>
+                    {selectedDeployment ? (
+                      isLoadingLog ? (
+                        <div className="text-center text-gray-500">
+                          Loading logs...
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+                          <pre>{deploymentLogs}</pre>
+                        </div>
+                      )
                     ) : (
-                      <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
-                        <pre>{deploymentLogs}</pre>
+                      <div className="text-center text-gray-500">
+                        No deployment selected.
                       </div>
                     )}
                   </div>
