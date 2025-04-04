@@ -69,6 +69,9 @@ function CreatePage({
   const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
   const [accounts, setAccounts] = useState([]);
   const [repositories, setRepositories] = useState([]);
+  const [loading, setLoading] = useState(false); // Loading state for repositories
+  const [currentPage, setCurrentPage] = useState(1); // Current page for pagination
+  const reposPerPage = 6; // Number of repositories per page
 
   const navigate = useNavigate();
 
@@ -78,25 +81,32 @@ function CreatePage({
         setAccounts(fetchedAccounts || []); // Ensure accounts is always an array
         if (fetchedAccounts?.length > 0) {
           setSelectedAccount(fetchedAccounts[0].login); // Automatically select the first account
-          fetchRepositories(fetchedAccounts[0].login).then(
-            (repos) => setRepositories(repos || []) // Ensure repositories is always an array
-          );
+          loadRepositories(fetchedAccounts[0].login);
         }
       })
       .catch((error) => {
         console.error("Error fetching accounts:", error);
         setAccounts([]); // Fallback to an empty array on error
       });
-  }, [fetchAccounts, fetchRepositories]);
+  }, [fetchAccounts]);
 
-  const handleAccountChange = (accountLogin) => {
-    setSelectedAccount(accountLogin);
+  const loadRepositories = (accountLogin) => {
+    setLoading(true);
     fetchRepositories(accountLogin)
-      .then((repos) => setRepositories(repos || [])) // Ensure repositories is always an array
+      .then((repos) => {
+        setRepositories(repos || []); // Ensure repositories is always an array
+        setCurrentPage(1); // Reset to the first page
+      })
       .catch((error) => {
         console.error("Error fetching repositories:", error);
         setRepositories([]); // Fallback to an empty array on error
-      });
+      })
+      .finally(() => setLoading(false));
+  };
+
+  const handleAccountChange = (accountLogin) => {
+    setSelectedAccount(accountLogin);
+    loadRepositories(accountLogin);
   };
 
   const handleRepoSelect = (selectedRepo) => {
@@ -135,6 +145,13 @@ function CreatePage({
     navigate("/pages");
   };
 
+  // Pagination logic
+  const indexOfLastRepo = currentPage * reposPerPage;
+  const indexOfFirstRepo = indexOfLastRepo - reposPerPage;
+  const currentRepos = repositories.slice(indexOfFirstRepo, indexOfLastRepo);
+
+  const totalPages = Math.ceil(repositories.length / reposPerPage);
+
   return (
     <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
       {step === 1 && (
@@ -170,21 +187,44 @@ function CreatePage({
           </div>
           <div className="mt-6">
             <label className="block mb-2">Repository</label>
-            <div className="grid grid-cols-2 gap-4">
-              {repositories.map((repository) => (
-                <div
-                  key={repository.full_name}
-                  className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
-                    repo === repository.full_name
-                      ? "border-blue-500"
-                      : "border-gray-300"
-                  }`}
-                  onClick={() => handleRepoSelect(repository.full_name)}
-                >
-                  {repository.full_name}
+            {loading ? (
+              <p className="text-center text-gray-500">
+                Loading repositories...
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  {currentRepos.map((repository) => (
+                    <div
+                      key={repository.full_name}
+                      className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
+                        repo === repository.full_name
+                          ? "border-blue-500"
+                          : "border-gray-300"
+                      }`}
+                      onClick={() => handleRepoSelect(repository.full_name)}
+                    >
+                      {repository.full_name}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+                <div className="mt-4 flex justify-center space-x-2">
+                  {Array.from({ length: totalPages }, (_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentPage(index + 1)}
+                      className={`px-3 py-1 rounded-md ${
+                        currentPage === index + 1
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-300 text-black"
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           <button
             onClick={() => setStep(2)}
