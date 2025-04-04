@@ -14,6 +14,7 @@ function App() {
   const [branch, setBranch] = useState("");
   const [buildScript, setBuildScript] = useState("");
   const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
+  const [editPage, setEditPage] = useState(null); // Page being edited
   const repositoriesPerPage = 12; // Display 12 repositories per page
 
   useEffect(() => {
@@ -80,7 +81,7 @@ function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          selectedRepo,
+          selectedRepo: editPage || selectedRepo,
           pageName,
           branch,
           buildScript,
@@ -97,10 +98,22 @@ function App() {
 
       alert("Page saved and deployed successfully!");
       setShowCreatePage(false); // Close the create page modal
+      setEditPage(null); // Reset edit mode
+      fetchPagesList(); // Refresh the pages list
     } catch (error) {
       console.error("Error during save and deploy:", error);
       alert("Failed to save and deploy: " + error.message);
     }
+  };
+
+  const handleEditPage = (page) => {
+    setEditPage(page);
+    setPageName(page.name);
+    setBranch(page.branch);
+    setBuildScript(page.buildScript || "");
+    setEnvVars([]); // Fetch env vars for the page (if needed)
+    setShowCreatePage(true);
+    setCreateStep(2); // Skip to Step 2 for editing
   };
 
   // Calculate the repositories to display for the current page
@@ -136,7 +149,8 @@ function App() {
           {pagesList.map((page) => (
             <li
               key={page.id}
-              className="p-4 bg-gray-100 rounded-md shadow-sm border border-gray-300"
+              className="p-4 bg-gray-100 rounded-md shadow-sm border border-gray-300 cursor-pointer hover:bg-gray-200"
+              onClick={() => handleEditPage(page)}
             >
               <p>
                 <strong>Repo:</strong> {page.repo}
@@ -146,9 +160,6 @@ function App() {
               </p>
               <p>
                 <strong>Branch:</strong> {page.branch}
-              </p>
-              <p>
-                <strong>Build Script:</strong> {page.buildScript}
               </p>
             </li>
           ))}
@@ -212,7 +223,9 @@ function App() {
             {createStep === 2 && (
               <div>
                 <h2 className="text-2xl font-bold mb-4">
-                  Step 2: Enter Page Details
+                  {editPage
+                    ? "Edit Page Details"
+                    : "Step 2: Enter Page Details"}
                 </h2>
                 <div className="mb-4">
                   <label className="block mb-2">Page Name</label>
