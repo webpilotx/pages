@@ -108,7 +108,7 @@ function CreatePage({
 
   useEffect(() => {
     if (repo) {
-      setLoadingBranches(true);
+      setLoadingBranches(true); // Start loading indicator
       fetchBranches(repo)
         .then((fetchedBranches) => {
           setBranches(fetchedBranches || []); // Ensure branches is always an array
@@ -123,7 +123,7 @@ function CreatePage({
           setBranches([]); // Fallback to an empty array on error
           setBranch(""); // Clear branch on error
         })
-        .finally(() => setLoadingBranches(false));
+        .finally(() => setLoadingBranches(false)); // Stop loading indicator
     }
   }, [repo]); // Run when repo changes
 
@@ -255,7 +255,7 @@ function CreatePage({
         <>
           {loadingBranches ? (
             <p className="text-center text-gray-500">Fetching branches...</p>
-          ) : (
+          ) : branches.length > 0 ? (
             <form onSubmit={handleSubmit}>
               <h2 className="text-2xl font-bold mb-4">Setup Page Details</h2>
               <div className="mb-4">
@@ -353,6 +353,10 @@ function CreatePage({
                 </button>
               </div>
             </form>
+          ) : (
+            <p className="text-center text-gray-500">
+              No branches available for the selected repository.
+            </p>
           )}
         </>
       )}
