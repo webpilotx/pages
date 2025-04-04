@@ -525,6 +525,10 @@ function PageDetails({ pageId }) {
     }
   }, [pageDetails?.repo]);
 
+  if (!pageDetails) {
+    return <p className="text-center text-gray-500">Loading page details...</p>;
+  }
+
   return (
     <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
       <div className="mb-4">
@@ -562,7 +566,7 @@ function PageDetails({ pageId }) {
         </div>
       </div>
 
-      {activeTab === "details" && pageDetails && (
+      {activeTab === "details" && (
         <div>
           <h2 className="text-2xl font-bold mb-4">Edit Page Details</h2>
           <div className="mb-4">
@@ -601,7 +605,7 @@ function PageDetails({ pageId }) {
           </div>
           <div className="mb-4">
             <label className="block mb-2">Environment Variables</label>
-            {pageDetails.envVars.map((env, index) => (
+            {pageDetails.envVars?.map((env, index) => (
               <div key={index} className="flex space-x-4 mb-2">
                 <input
                   type="text"
