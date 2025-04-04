@@ -18,6 +18,9 @@ function App() {
   const repositoriesPerPage = 12; // Display 12 repositories per page
   const [activeTab, setActiveTab] = useState("details"); // Track the active tab
   const [deploymentLogs, setDeploymentLogs] = useState(""); // Store deployment logs
+  const [deployments, setDeployments] = useState([]); // Store deployments list
+  const [selectedDeployment, setSelectedDeployment] = useState(null); // Selected deployment
+  const [isLoadingLog, setIsLoadingLog] = useState(false); // Loading indicator for logs
 
   const fetchPagesList = async () => {
     try {
@@ -70,6 +73,55 @@ function App() {
     } catch (error) {
       console.error("Error fetching deployment logs:", error);
       setDeploymentLogs("Error fetching deployment logs.");
+    }
+  };
+
+  const fetchDeployments = async (pageId) => {
+    try {
+      const response = await fetch(`/pages/api/deployments?pageId=${pageId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDeployments(data);
+      } else {
+        console.error("Failed to fetch deployments.");
+      }
+    } catch (error) {
+      console.error("Error fetching deployments:", error);
+    }
+  };
+
+  const fetchDeploymentLog = async (deploymentId, isRunning) => {
+    try {
+      setIsLoadingLog(true);
+      const response = await fetch(
+        `/pages/api/deployment-log?deploymentId=${deploymentId}`
+      );
+      if (response.ok) {
+        const logs = await response.text();
+        setDeploymentLogs(logs);
+
+        // If the deployment is still running, poll for updates
+        if (isRunning) {
+          const interval = setInterval(async () => {
+            const updatedResponse = await fetch(
+              `/pages/api/deployment-log?deploymentId=${deploymentId}`
+            );
+            if (updatedResponse.ok) {
+              const updatedLogs = await updatedResponse.text();
+              setDeploymentLogs(updatedLogs);
+            } else {
+              clearInterval(interval);
+            }
+          }, 3000); // Poll every 3 seconds
+        }
+      } else {
+        setDeploymentLogs("Failed to fetch deployment logs.");
+      }
+    } catch (error) {
+      console.error("Error fetching deployment log:", error);
+      setDeploymentLogs("Error fetching deployment log.");
+    } finally {
+      setIsLoadingLog(false);
     }
   };
 
@@ -132,9 +184,15 @@ function App() {
     setEnvVars([]); // Fetch env vars for the page (if needed)
     fetchBranches(page.repo); // Fetch branches for the selected page's repository
     fetchDeploymentLogs(page.id); // Fetch deployment logs for the page
+    fetchDeployments(page.id); // Fetch deployments for the page
     setShowCreatePage(true);
     setCreateStep(2); // Skip to Step 2 for editing
     setActiveTab("details"); // Default to the details tab
+  };
+
+  const handleSelectDeployment = (deployment) => {
+    setSelectedDeployment(deployment);
+    fetchDeploymentLog(deployment.id, deployment.exitCode === null);
   };
 
   // Calculate the repositories to display for the current page
@@ -259,7 +317,10 @@ function App() {
                   <div className="mb-4">
                     <label className="block mb-2">Repository</label>
                     <p className="px-4 py-2 bg-gray-200 text-black rounded-md">
-                      {editPage.repo}
+                      <strong>Repo:</strong> {editPage.repo}
+                    </p>
+                    <p className="px-4 py-2 bg-gray-200 text-black rounded-md mt-2">
+                      <strong>Page Name:</strong> {editPage.name}
                     </p>
                   </div>
                 )}
@@ -269,6 +330,16 @@ function App() {
                     <p className="px-4 py-2 bg-gray-200 text-black rounded-md">
                       {selectedRepo.full_name}
                     </p>
+                    <div className="mb-4 mt-4">
+                      <label className="block mb-2">Page Name</label>
+                      <input
+                        type="text"
+                        value={pageName}
+                        onChange={(e) => setPageName(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                        required
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -303,17 +374,6 @@ function App() {
                 {/* Tab Content */}
                 {activeTab === "details" && (
                   <div>
-                    <div className="mb-4">
-                      <label className="block mb-2">Page Name</label>
-                      <input
-                        type="text"
-                        value={pageName}
-                        onChange={(e) => setPageName(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-                        required
-                        disabled={!!editPage} // Disable input if editing an existing page
-                      />
-                    </div>
                     <div className="mb-4">
                       <label className="block mb-2">Branch</label>
                       <select
@@ -397,9 +457,43 @@ function App() {
                 {activeTab === "logs" && (
                   <div>
                     <h3 className="text-xl font-bold mb-4">Deployment Logs</h3>
-                    <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
-                      <pre>{deploymentLogs}</pre>
+                    <div className="mb-4">
+                      <ul className="space-y-2">
+                        {deployments.map((deployment) => (
+                          <li
+                            key={deployment.id}
+                            className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
+                              selectedDeployment?.id === deployment.id
+                                ? "border-blue-500"
+                                : "border-gray-300"
+                            }`}
+                            onClick={() => handleSelectDeployment(deployment)}
+                          >
+                            <p>
+                              <strong>Start Time:</strong>{" "}
+                              {new Date(deployment.createdAt).toLocaleString()}
+                            </p>
+                            <p>
+                              <strong>Status:</strong>{" "}
+                              {deployment.exitCode === null
+                                ? "Running"
+                                : deployment.exitCode === 0
+                                ? "Success"
+                                : "Failed"}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
+                    {isLoadingLog ? (
+                      <div className="text-center text-gray-500">
+                        Loading logs...
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+                        <pre>{deploymentLogs}</pre>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

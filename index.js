@@ -314,6 +314,58 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
   }
 });
 
+app.get("/pages/api/deployments", async (req, res) => {
+  try {
+    const { pageId } = req.query;
+
+    if (!pageId) {
+      return res.status(400).json({ error: "Missing pageId parameter" });
+    }
+
+    const deployments = await db
+      .select()
+      .from(deploymentsTable)
+      .where(eq(deploymentsTable.pageId, pageId))
+      .orderBy(deploymentsTable.createdAt.desc());
+
+    res.json(deployments);
+  } catch (error) {
+    console.error("Error fetching deployments:", error);
+    res.status(500).json({ error: "Failed to fetch deployments" });
+  }
+});
+
+app.get("/pages/api/deployment-log", async (req, res) => {
+  try {
+    const { deploymentId } = req.query;
+
+    if (!deploymentId) {
+      return res.status(400).json({ error: "Missing deploymentId parameter" });
+    }
+
+    const logFilePath = path.join(
+      process.env.PAGES_DIR,
+      "deployments",
+      `${deploymentId}.log`
+    );
+
+    const logExists = await fs
+      .access(logFilePath)
+      .then(() => true)
+      .catch(() => false);
+
+    if (!logExists) {
+      return res.status(404).json({ error: "Log file not found" });
+    }
+
+    const logContent = await fs.readFile(logFilePath, "utf-8");
+    res.send(logContent);
+  } catch (error) {
+    console.error("Error fetching deployment log:", error);
+    res.status(500).json({ error: "Failed to fetch deployment log" });
+  }
+});
+
 const execPromise = (command) =>
   new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
