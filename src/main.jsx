@@ -16,6 +16,8 @@ function App() {
   const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
   const [editPage, setEditPage] = useState(null); // Page being edited
   const repositoriesPerPage = 12; // Display 12 repositories per page
+  const [activeTab, setActiveTab] = useState("details"); // Track the active tab
+  const [deploymentLogs, setDeploymentLogs] = useState(""); // Store deployment logs
 
   const fetchPagesList = async () => {
     try {
@@ -53,6 +55,21 @@ function App() {
       }
     } catch (error) {
       console.error("Error fetching branches:", error);
+    }
+  };
+
+  const fetchDeploymentLogs = async (pageId) => {
+    try {
+      const response = await fetch(`/pages/deployments/${pageId}.log`);
+      if (response.ok) {
+        const logs = await response.text();
+        setDeploymentLogs(logs);
+      } else {
+        setDeploymentLogs("Failed to fetch deployment logs.");
+      }
+    } catch (error) {
+      console.error("Error fetching deployment logs:", error);
+      setDeploymentLogs("Error fetching deployment logs.");
     }
   };
 
@@ -114,8 +131,10 @@ function App() {
     setBuildScript(page.buildScript || "");
     setEnvVars([]); // Fetch env vars for the page (if needed)
     fetchBranches(page.repo); // Fetch branches for the selected page's repository
+    fetchDeploymentLogs(page.id); // Fetch deployment logs for the page
     setShowCreatePage(true);
     setCreateStep(2); // Skip to Step 2 for editing
+    setActiveTab("details"); // Default to the details tab
   };
 
   // Calculate the repositories to display for the current page
@@ -234,9 +253,7 @@ function App() {
             {createStep === 2 && (
               <div>
                 <h2 className="text-2xl font-bold mb-4">
-                  {editPage
-                    ? "Edit Page Details"
-                    : "Step 2: Enter Page Details"}
+                  {editPage ? "Edit Page" : "Step 2: Enter Page Details"}
                 </h2>
                 {editPage && (
                   <div className="mb-4">
@@ -254,90 +271,137 @@ function App() {
                     </p>
                   </div>
                 )}
-                <div className="mb-4">
-                  <label className="block mb-2">Page Name</label>
-                  <input
-                    type="text"
-                    value={pageName}
-                    onChange={(e) => setPageName(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-                    required
-                    disabled={!!editPage} // Disable input if editing an existing page
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block mb-2">Branch</label>
-                  <select
-                    value={branch}
-                    onChange={(e) => setBranch(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-                    required
-                  >
-                    <option value="" disabled>
-                      Select a branch
-                    </option>
-                    {branches.map((branch) => (
-                      <option key={branch} value={branch}>
-                        {branch}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mb-4">
-                  <label className="block mb-2">Build Script (Optional)</label>
-                  <textarea
-                    value={buildScript}
-                    onChange={(e) => setBuildScript(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-                    rows="4"
-                  ></textarea>
-                </div>
-                <div className="mb-4">
-                  <label className="block mb-2">Environment Variables</label>
-                  {envVars.map((env, index) => (
-                    <div key={index} className="flex space-x-4 mb-2">
-                      <input
-                        type="text"
-                        placeholder="Name"
-                        value={env.name}
-                        onChange={(e) =>
-                          handleEnvVarChange(index, "name", e.target.value)
-                        }
-                        className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-                        required
-                      />
-                      <input
-                        type="text"
-                        placeholder="Value"
-                        value={env.value}
-                        onChange={(e) =>
-                          handleEnvVarChange(index, "value", e.target.value)
-                        }
-                        className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-                        required
-                      />
+
+                {/* Tabs */}
+                {editPage && (
+                  <div className="mb-4">
+                    <div className="flex space-x-4 border-b border-gray-300">
                       <button
-                        onClick={() => handleRemoveEnvVar(index)}
-                        className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                        onClick={() => setActiveTab("details")}
+                        className={`px-4 py-2 ${
+                          activeTab === "details"
+                            ? "border-b-2 border-blue-500 text-blue-500"
+                            : "text-gray-500"
+                        }`}
                       >
-                        Remove
+                        Page Details
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("logs")}
+                        className={`px-4 py-2 ${
+                          activeTab === "logs"
+                            ? "border-b-2 border-blue-500 text-blue-500"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        Deployment Logs
                       </button>
                     </div>
-                  ))}
-                  <button
-                    onClick={handleAddEnvVar}
-                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                  >
-                    Add Env
-                  </button>
-                </div>
-                <button
-                  onClick={handleSaveAndDeploy}
-                  disabled={!branch || !pageName}
-                  className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-                >
-                  Save and Deploy
-                </button>
+                  </div>
+                )}
+
+                {/* Tab Content */}
+                {activeTab === "details" && (
+                  <div>
+                    <div className="mb-4">
+                      <label className="block mb-2">Page Name</label>
+                      <input
+                        type="text"
+                        value={pageName}
+                        onChange={(e) => setPageName(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                        required
+                        disabled={!!editPage} // Disable input if editing an existing page
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-2">Branch</label>
+                      <select
+                        value={branch}
+                        onChange={(e) => setBranch(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                        required
+                      >
+                        <option value="" disabled>
+                          Select a branch
+                        </option>
+                        {branches.map((branch) => (
+                          <option key={branch} value={branch}>
+                            {branch}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-2">
+                        Build Script (Optional)
+                      </label>
+                      <textarea
+                        value={buildScript}
+                        onChange={(e) => setBuildScript(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                        rows="4"
+                      ></textarea>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-2">
+                        Environment Variables
+                      </label>
+                      {envVars.map((env, index) => (
+                        <div key={index} className="flex space-x-4 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Name"
+                            value={env.name}
+                            onChange={(e) =>
+                              handleEnvVarChange(index, "name", e.target.value)
+                            }
+                            className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                            required
+                          />
+                          <input
+                            type="text"
+                            placeholder="Value"
+                            value={env.value}
+                            onChange={(e) =>
+                              handleEnvVarChange(index, "value", e.target.value)
+                            }
+                            className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                            required
+                          />
+                          <button
+                            onClick={() => handleRemoveEnvVar(index)}
+                            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={handleAddEnvVar}
+                        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                      >
+                        Add Env
+                      </button>
+                    </div>
+                    <button
+                      onClick={handleSaveAndDeploy}
+                      disabled={!branch || !pageName}
+                      className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                    >
+                      Save and Deploy
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === "logs" && (
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">Deployment Logs</h3>
+                    <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+                      <pre>{deploymentLogs}</pre>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
