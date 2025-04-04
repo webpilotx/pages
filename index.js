@@ -297,7 +297,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
     });
 
     worker.on("message", (message) => {
-      console.log(`Worker message: ${message}`);
+      console.log(`Worker message: ${JSON.stringify(message, null, 2)}`);
     });
 
     worker.on("error", (error) => {
