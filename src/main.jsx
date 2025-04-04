@@ -13,7 +13,7 @@ function App() {
   const [branch, setBranch] = useState("");
   const [buildScript, setBuildScript] = useState("");
   const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
-  const repositoriesPerPage = 10;
+  const repositoriesPerPage = 12; // Update to display 12 repositories per page
 
   useEffect(() => {
     async function fetchPagesList() {
@@ -138,7 +138,8 @@ function App() {
                       } cursor-pointer hover:bg-gray-600`}
                       onClick={() => setSelectedRepo(repo)}
                     >
-                      <p className="font-bold">{repo.full_name}</p>
+                      <p className="font-bold truncate">{repo.full_name}</p>{" "}
+                      {/* Add truncate */}
                     </div>
                   ))}
                 </div>
