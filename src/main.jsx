@@ -172,10 +172,32 @@ function App() {
         return;
       }
 
-      alert("Page saved and deployed successfully!");
-      setShowCreatePage(false); // Close the create page modal
-      setEditPage(null); // Reset edit mode
-      fetchPagesList(); // Refresh the pages list
+      const data = await response.json();
+      console.log("Page saved and deployment triggered successfully:", data);
+
+      // Close the create page modal
+      setShowCreatePage(false);
+      setEditPage(null);
+
+      // Refresh the pages list
+      await fetchPagesList();
+
+      // Fetch deployments for the newly created or updated page
+      const pageId = editPage ? editPage.id : data.pageId;
+      await fetchDeployments(pageId);
+
+      // Automatically select the latest deployment and expand its logs
+      if (deployments.length > 0) {
+        const latestDeployment = deployments[deployments.length - 1];
+        setSelectedDeployment(latestDeployment);
+        fetchDeploymentLog(
+          latestDeployment.id,
+          latestDeployment.exitCode === null
+        );
+      }
+
+      // Switch to the deployment logs tab
+      setActiveTab("logs");
     } catch (error) {
       console.error("Error during save and deploy:", error);
       alert("Failed to save and deploy: " + error.message);
