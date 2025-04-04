@@ -17,16 +17,18 @@ function App() {
   const [editPage, setEditPage] = useState(null); // Page being edited
   const repositoriesPerPage = 12; // Display 12 repositories per page
 
-  useEffect(() => {
-    async function fetchPagesList() {
-      try {
-        const response = await fetch("/pages/api/pages-list");
-        const data = await response.json();
-        setPagesList(data);
-      } catch (error) {
-        console.error("Error fetching pages list:", error);
-      }
+  const fetchPagesList = async () => {
+    try {
+      const response = await fetch("/pages/api/pages-list");
+      const data = await response.json();
+      setPagesList(data);
+    } catch (error) {
+      console.error("Error fetching pages list:", error);
     }
+  };
+
+  useEffect(() => {
+    fetchPagesList();
 
     async function fetchAllRepositories() {
       try {
@@ -38,7 +40,6 @@ function App() {
       }
     }
 
-    fetchPagesList();
     fetchAllRepositories();
   }, []);
 
