@@ -12,14 +12,14 @@ function App() {
   const [branch, setBranch] = useState("");
   const [buildScript, setBuildScript] = useState("");
   const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
-  const [editPage, setEditPage] = useState(null); // Page being edited
-  const [selectedPage, setSelectedPage] = useState(null); // Track the selected page
-  const repositoriesPerPage = 12; // Display 12 repositories per page
-  const [activeTab, setActiveTab] = useState("details"); // Track the active tab
-  const [deploymentLogs, setDeploymentLogs] = useState({}); // Store logs keyed by pageId
-  const [deployments, setDeployments] = useState([]); // Store deployments list
-  const [selectedDeployment, setSelectedDeployment] = useState(null); // Selected deployment
-  const [isLoadingLog, setIsLoadingLog] = useState(false); // Loading indicator for logs
+  const [editPage, setEditPage] = useState(null);
+  const [selectedPage, setSelectedPage] = useState(null);
+  const repositoriesPerPage = 12;
+  const [activeTab, setActiveTab] = useState("details");
+  const [deploymentLogs, setDeploymentLogs] = useState({});
+  const [deployments, setDeployments] = useState([]);
+  const [selectedDeployment, setSelectedDeployment] = useState(null);
+  const [isLoadingLog, setIsLoadingLog] = useState(false);
 
   const fetchPagesList = async () => {
     try {
@@ -38,7 +38,7 @@ function App() {
       try {
         const response = await fetch("/pages/api/repositories");
         const data = await response.json();
-        setRepositories(data.repositories); // Store all repositories
+        setRepositories(data.repositories);
       } catch (error) {
         console.error("Error fetching repositories:", error);
       }
@@ -53,7 +53,7 @@ function App() {
       const data = await response.json();
       setBranches(data.branches);
       if (data.branches.length > 0) {
-        setBranch(data.branches[0]); // Set the first branch as the default
+        setBranch(data.branches[0]);
       }
     } catch (error) {
       console.error("Error fetching branches:", error);
@@ -104,15 +104,12 @@ function App() {
         }
       };
 
-      // Fetch logs initially
       await fetchLogs();
 
-      // If the deployment is still running, poll for updates
       if (isRunning) {
         const interval = setInterval(async () => {
           await fetchLogs();
 
-          // Check if the deployment is still running
           const updatedResponse = await fetch(
             `/pages/api/deployments?pageId=${pageId}`
           );
@@ -122,9 +119,9 @@ function App() {
           );
 
           if (updatedDeployment && updatedDeployment.exitCode !== null) {
-            clearInterval(interval); // Stop polling when the deployment is complete
+            clearInterval(interval);
           }
-        }, 3000); // Poll every 3 seconds
+        }, 3000);
       }
     } catch (error) {
       console.error("Error fetching deployment log:", error);
@@ -146,17 +143,16 @@ function App() {
       return;
     }
 
-    // Establish an SSE connection
     const eventSource = new EventSource(
       `/pages/api/deployment-log-stream?deploymentId=${deploymentId}`
     );
 
     eventSource.onmessage = (event) => {
       try {
-        const logChunk = event.data; // Receive the log chunk as plain text
+        const logChunk = event.data;
         setDeploymentLogs((prevLogs) => ({
           ...prevLogs,
-          [pageId]: (prevLogs[pageId] || "") + logChunk, // Append the new log chunk
+          [pageId]: (prevLogs[pageId] || "") + logChunk,
         }));
       } catch (error) {
         console.error("Error appending log chunk:", error);
@@ -167,11 +163,9 @@ function App() {
       console.error("Error in log stream connection. Retrying...");
       eventSource.close();
 
-      // Retry the connection after a delay
       setTimeout(() => fetchDeploymentLogStream(deploymentId, pageId), 3000);
     };
 
-    // Close the connection when the deployment is complete or the user navigates away
     return () => {
       eventSource.close();
     };
@@ -203,7 +197,7 @@ function App() {
           branch,
           buildScript,
           envVars,
-          editPage, // Pass editPage to differentiate between creation and update
+          editPage,
         }),
       });
 
@@ -217,10 +211,8 @@ function App() {
       const data = await response.json();
       console.log("Page saved and deployment triggered successfully:", data);
 
-      // Refresh the pages list
       await fetchPagesList();
 
-      // Fetch deployments for the newly created or updated page
       const pageId = editPage ? editPage.id : data.pageId;
       const deploymentsResponse = await fetch(
         `/pages/api/deployments?pageId=${pageId}`
@@ -229,7 +221,6 @@ function App() {
         const deploymentsData = await deploymentsResponse.json();
         setDeployments(deploymentsData);
 
-        // Automatically select the latest deployment (running deployment)
         const latestDeployment = deploymentsData.find(
           (deployment) => deployment.id === data.deploymentId
         );
@@ -243,7 +234,6 @@ function App() {
         }
       }
 
-      // Switch to the deployment logs tab
       setActiveTab("logs");
     } catch (error) {
       console.error("Error during save and deploy:", error);
@@ -256,7 +246,6 @@ function App() {
       setSelectedDeployment(deployment);
       setIsLoadingLog(true);
 
-      // Fetch the latest deployment record
       const response = await fetch(
         `/pages/api/deployments?pageId=${selectedPage.id}`
       );
@@ -264,7 +253,6 @@ function App() {
         const deploymentsData = await response.json();
         setDeployments(deploymentsData);
 
-        // Always stream logs for the selected deployment
         fetchDeploymentLogStream(deployment.id, selectedPage.id);
       } else {
         console.error("Failed to fetch deployments.");
@@ -285,7 +273,6 @@ function App() {
 
     if (tab === "logs" && selectedPage) {
       try {
-        // Fetch deployments when switching to the "Deployment Logs" tab
         const response = await fetch(
           `/pages/api/deployments?pageId=${selectedPage.id}`
         );
@@ -308,25 +295,23 @@ function App() {
     setBuildScript("");
     setEnvVars([{ name: "", value: "" }]);
     setSelectedRepo(null);
-    setShowCreatePage(true);
-    setCreateStep(1);
-    setActiveTab("details"); // Ensure the active tab is set to "details"
+    setActiveTab("details");
   };
 
   const handleSelectPage = (page) => {
-    setSelectedPage(page); // Focus on the selected page
+    setSelectedPage(page);
     setEditPage(page);
     setPageName(page.name);
     setBranch(page.branch);
     setBuildScript(page.buildScript || "");
-    setEnvVars([]); // Fetch env vars for the page (if needed)
-    fetchBranches(page.repo); // Fetch branches for the selected page's repository
-    fetchDeployments(page.id); // Fetch deployments for the page
-    setActiveTab("details"); // Default to the details tab
+    setEnvVars([]);
+    fetchBranches(page.repo);
+    fetchDeployments(page.id);
+    setActiveTab("details");
   };
 
   const handleBackToPagesList = () => {
-    setSelectedPage(null); // Clear the selected page and show the pages list
+    setSelectedPage(null);
     setEditPage(null);
     setPageName("");
     setBranch("");
@@ -336,7 +321,6 @@ function App() {
     setActiveTab("details");
   };
 
-  // Calculate the repositories to display for the current page
   const paginatedRepositories = repositories.slice(
     (currentPage - 1) * repositoriesPerPage,
     currentPage * repositoriesPerPage
@@ -345,12 +329,11 @@ function App() {
   const totalPages = Math.ceil(repositories.length / repositoriesPerPage);
 
   const handlePageChange = (newPage) => {
-    setCurrentPage(newPage); // Update the current page
+    setCurrentPage(newPage);
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-black">
-      {/* Navigation Bar */}
       <nav className="bg-gray-200 border-b border-gray-300">
         <div className="container mx-auto px-4 py-3 flex items-center">
           <a
@@ -361,8 +344,6 @@ function App() {
           </a>
         </div>
       </nav>
-
-      {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-8">
         {!selectedPage ? (
           <>
@@ -386,7 +367,6 @@ function App() {
                 </li>
               ))}
             </ul>
-
             <button
               onClick={handleCreatePage}
               className="mt-8 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
@@ -402,7 +382,6 @@ function App() {
             >
               Back to Pages List
             </button>
-            {/* Render the selected page details */}
             <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
               <div className="mb-4">
                 <h2 className="text-2xl font-bold mb-4">Page Details</h2>
@@ -416,8 +395,6 @@ function App() {
                   <strong>Branch:</strong> {selectedPage.branch}
                 </p>
               </div>
-
-              {/* Tabs */}
               <div className="mb-4">
                 <div className="flex space-x-4 border-b border-gray-300">
                   <button
@@ -442,8 +419,6 @@ function App() {
                   </button>
                 </div>
               </div>
-
-              {/* Tab Content */}
               {activeTab === "details" && (
                 <div>
                   <div className="mb-4">
@@ -523,7 +498,6 @@ function App() {
                   </button>
                 </div>
               )}
-
               {activeTab === "logs" && (
                 <div>
                   <h3 className="text-xl font-bold mb-4">Deployment Logs</h3>
