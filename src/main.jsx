@@ -204,6 +204,7 @@ function App() {
                     value={pageName}
                     onChange={(e) => setPageName(e.target.value)}
                     className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                    required
                   />
                 </div>
                 <div className="mb-4">
@@ -212,8 +213,11 @@ function App() {
                     value={branch}
                     onChange={(e) => setBranch(e.target.value)}
                     className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                    required
                   >
-                    <option value="">Select a branch</option>
+                    <option value="" disabled>
+                      Select a branch
+                    </option>
                     {branches.map((branch) => (
                       <option key={branch} value={branch}>
                         {branch}
@@ -228,6 +232,7 @@ function App() {
                     onChange={(e) => setBuildScript(e.target.value)}
                     className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
                     rows="4"
+                    required
                   ></textarea>
                 </div>
                 <div className="mb-4">
@@ -242,6 +247,7 @@ function App() {
                           handleEnvVarChange(index, "name", e.target.value)
                         }
                         className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                        required
                       />
                       <input
                         type="text"
@@ -251,6 +257,7 @@ function App() {
                           handleEnvVarChange(index, "value", e.target.value)
                         }
                         className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                        required
                       />
                       <button
                         onClick={() => handleRemoveEnvVar(index)}
@@ -269,7 +276,8 @@ function App() {
                 </div>
                 <button
                   onClick={handleSaveAndDeploy}
-                  className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                  disabled={!branch || !pageName || !buildScript}
+                  className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
                 >
                   Save and Deploy
                 </button>
