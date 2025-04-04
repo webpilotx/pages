@@ -6,6 +6,13 @@ function App() {
   const [pagesList, setPagesList] = useState([]);
   const [repositories, setRepositories] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showCreatePage, setShowCreatePage] = useState(false);
+  const [createStep, setCreateStep] = useState(1); // Step 1: Choose repo, Step 2: Enter details
+  const [selectedRepo, setSelectedRepo] = useState(null);
+  const [pageName, setPageName] = useState("");
+  const [branch, setBranch] = useState("");
+  const [buildScript, setBuildScript] = useState("");
+  const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
   const repositoriesPerPage = 10;
 
   useEffect(() => {
@@ -43,6 +50,28 @@ function App() {
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage); // Update the current page
+  };
+
+  const handleAddEnvVar = () => {
+    setEnvVars([...envVars, { name: "", value: "" }]);
+  };
+
+  const handleEnvVarChange = (index, field, value) => {
+    const updatedEnvVars = [...envVars];
+    updatedEnvVars[index][field] = value;
+    setEnvVars(updatedEnvVars);
+  };
+
+  const handleSaveAndDeploy = () => {
+    console.log({
+      selectedRepo,
+      pageName,
+      branch,
+      buildScript,
+      envVars,
+    });
+    // Add logic to save and deploy the page
+    setShowCreatePage(false); // Close the create page modal
   };
 
   return (
@@ -84,34 +113,140 @@ function App() {
           ))}
         </ul>
 
-        <h1 className="text-3xl font-bold mt-12 mb-6">Repositories</h1>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {paginatedRepositories.map((repo) => (
-            <div
-              key={repo.id}
-              className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700"
-            >
-              <p className="font-bold">{repo.full_name}</p>
-            </div>
-          ))}
-        </div>
+        <button
+          onClick={() => setShowCreatePage(true)}
+          className="mt-8 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+        >
+          Create
+        </button>
 
-        {/* Pagination */}
-        <div className="flex justify-center mt-6 space-x-4">
-          {Array.from({ length: totalPages }, (_, index) => (
-            <button
-              key={index + 1}
-              onClick={() => handlePageChange(index + 1)}
-              className={`px-4 py-2 rounded-md ${
-                currentPage === index + 1
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-              }`}
-            >
-              {index + 1}
-            </button>
-          ))}
-        </div>
+        {showCreatePage && (
+          <div className="mt-8 p-6 bg-gray-800 rounded-md shadow-lg">
+            {createStep === 1 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-4">
+                  Step 1: Choose Repository
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {paginatedRepositories.map((repo) => (
+                    <div
+                      key={repo.id}
+                      className={`p-4 bg-gray-700 rounded-md shadow-sm border ${
+                        selectedRepo?.id === repo.id
+                          ? "border-blue-500"
+                          : "border-gray-600"
+                      } cursor-pointer hover:bg-gray-600`}
+                      onClick={() => setSelectedRepo(repo)}
+                    >
+                      <p className="font-bold">{repo.full_name}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between mt-6">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+                <button
+                  onClick={() => setCreateStep(2)}
+                  disabled={!selectedRepo}
+                  className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Begin Setup
+                </button>
+              </div>
+            )}
+
+            {createStep === 2 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-4">
+                  Step 2: Enter Page Details
+                </h2>
+                <div className="mb-4">
+                  <label className="block mb-2">Page Name</label>
+                  <input
+                    type="text"
+                    value={pageName}
+                    onChange={(e) => setPageName(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-700 text-white rounded-md"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block mb-2">Branch</label>
+                  <select
+                    value={branch}
+                    onChange={(e) => setBranch(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-700 text-white rounded-md"
+                  >
+                    <option value="">Select a branch</option>
+                    {selectedRepo?.branches?.map((branch) => (
+                      <option key={branch} value={branch}>
+                        {branch}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label className="block mb-2">Build Script</label>
+                  <textarea
+                    value={buildScript}
+                    onChange={(e) => setBuildScript(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-700 text-white rounded-md"
+                    rows="4"
+                  ></textarea>
+                </div>
+                <div className="mb-4">
+                  <label className="block mb-2">Environment Variables</label>
+                  {envVars.map((env, index) => (
+                    <div key={index} className="flex space-x-4 mb-2">
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={env.name}
+                        onChange={(e) =>
+                          handleEnvVarChange(index, "name", e.target.value)
+                        }
+                        className="w-1/2 px-4 py-2 bg-gray-700 text-white rounded-md"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Value"
+                        value={env.value}
+                        onChange={(e) =>
+                          handleEnvVarChange(index, "value", e.target.value)
+                        }
+                        className="w-1/2 px-4 py-2 bg-gray-700 text-white rounded-md"
+                      />
+                    </div>
+                  ))}
+                  <button
+                    onClick={handleAddEnvVar}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    Add Env
+                  </button>
+                </div>
+                <button
+                  onClick={handleSaveAndDeploy}
+                  className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Save and Deploy
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
