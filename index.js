@@ -38,8 +38,6 @@ app.get("/pages/api/pages-list", async (req, res) => {
 
 app.get("/pages/api/repositories", async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-
     // Fetch all connected accounts
     const accounts = await db
       .select({
@@ -49,7 +47,7 @@ app.get("/pages/api/repositories", async (req, res) => {
       .from(accountsTable);
 
     if (!accounts.length) {
-      return res.json({ repositories: [], total: 0 });
+      return res.json({ repositories: [] });
     }
 
     // Fetch repositories from all accounts in parallel
@@ -74,17 +72,8 @@ app.get("/pages/api/repositories", async (req, res) => {
       )
     ).flat();
 
-    // Paginate the repositories
-    const startIndex = (page - 1) * limit;
-    const paginatedRepositories = allRepositories.slice(
-      startIndex,
-      startIndex + parseInt(limit)
-    );
-
-    res.json({
-      repositories: paginatedRepositories,
-      total: allRepositories.length,
-    });
+    // Respond with all repositories
+    res.json({ repositories: allRepositories });
   } catch (error) {
     console.error("Error fetching repositories:", error);
     res

@@ -5,7 +5,6 @@ import "./index.css";
 function App() {
   const [pagesList, setPagesList] = useState([]);
   const [repositories, setRepositories] = useState([]);
-  const [totalRepositories, setTotalRepositories] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const repositoriesPerPage = 10;
 
@@ -20,29 +19,30 @@ function App() {
       }
     }
 
+    async function fetchAllRepositories() {
+      try {
+        const response = await fetch("/pages/api/repositories");
+        const data = await response.json();
+        setRepositories(data.repositories); // Store all repositories
+      } catch (error) {
+        console.error("Error fetching repositories:", error);
+      }
+    }
+
     fetchPagesList();
+    fetchAllRepositories();
   }, []);
 
-  const fetchRepositories = async (page = 1) => {
-    try {
-      const response = await fetch(
-        `/pages/api/repositories?page=${page}&limit=${repositoriesPerPage}`
-      );
-      const data = await response.json();
-      setRepositories(data.repositories);
-      setTotalRepositories(data.total);
-      setCurrentPage(page);
-    } catch (error) {
-      console.error("Error fetching repositories:", error);
-    }
-  };
+  // Calculate the repositories to display for the current page
+  const paginatedRepositories = repositories.slice(
+    (currentPage - 1) * repositoriesPerPage,
+    currentPage * repositoriesPerPage
+  );
 
-  useEffect(() => {
-    fetchRepositories(currentPage);
-  }, [currentPage]);
+  const totalPages = Math.ceil(repositories.length / repositoriesPerPage);
 
   const handlePageChange = (newPage) => {
-    fetchRepositories(newPage);
+    setCurrentPage(newPage); // Update the current page
   };
 
   return (
@@ -86,35 +86,31 @@ function App() {
 
         <h1 className="text-3xl font-bold mt-12 mb-6">Repositories</h1>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {repositories.map((repo) => (
+          {paginatedRepositories.map((repo) => (
             <div
               key={repo.id}
               className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700"
             >
-              <p className="font-bold">{repo.full_name}</p>{" "}
-              {/* Display full_name */}
+              <p className="font-bold">{repo.full_name}</p>
             </div>
           ))}
         </div>
 
         {/* Pagination */}
         <div className="flex justify-center mt-6 space-x-4">
-          {Array.from(
-            { length: Math.ceil(totalRepositories / repositoriesPerPage) },
-            (_, index) => (
-              <button
-                key={index + 1}
-                onClick={() => handlePageChange(index + 1)}
-                className={`px-4 py-2 rounded-md ${
-                  currentPage === index + 1
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                {index + 1}
-              </button>
-            )
-          )}
+          {Array.from({ length: totalPages }, (_, index) => (
+            <button
+              key={index + 1}
+              onClick={() => handlePageChange(index + 1)}
+              className={`px-4 py-2 rounded-md ${
+                currentPage === index + 1
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+            >
+              {index + 1}
+            </button>
+          ))}
         </div>
       </main>
     </div>
