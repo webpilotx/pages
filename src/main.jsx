@@ -45,8 +45,15 @@ function App() {
   };
 
   const handleConnectGitProvider = () => {
-    alert("Redirecting to connect to GitHub...");
-    // Mock connection process for GitHub. Replace with actual logic if needed.
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
+    if (!clientId) {
+      console.error(
+        "GitHub Client ID is not defined in the environment variables."
+      );
+      return;
+    }
+    // Redirect to GitHub's OAuth or connection URL
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}`;
   };
 
   return (
