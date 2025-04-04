@@ -415,25 +415,17 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
     res.write("event: connected\n");
     res.write("data: Log streaming started\n\n");
 
-    // Create a read stream for the log file
-    const logStream = fs.createReadStream(logFilePath, { encoding: "utf-8" });
-
-    logStream.on("data", (chunk) => {
-      res.write("event: log\n");
-      res.write(`data: ${chunk}\n\n`); // Stream log chunks as plain text
-    });
-
-    logStream.on("end", () => {
-      res.write("event: end\n");
-      res.write("data: Log streaming completed\n\n");
-      res.end();
-    });
-
-    logStream.on("error", (error) => {
-      console.error("Error reading log file:", error);
-      res.write("event: error\n");
-      res.write("data: Failed to read log file\n\n");
-      res.end();
+    // Watch the log file for changes and stream updates
+    const watcher = fs.watch(logFilePath, { encoding: "utf-8" }, async () => {
+      try {
+        const logs = await fsPromises.readFile(logFilePath, "utf-8");
+        res.write("event: log\n");
+        res.write(`data: ${logs}\n\n`);
+      } catch (error) {
+        console.error("Error reading log file:", error);
+        res.write("event: error\n");
+        res.write("data: Failed to read log file\n\n");
+      }
     });
 
     // Handle client disconnect
@@ -441,7 +433,8 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       console.log(
         `Client disconnected from log stream for deployment ${deploymentId}`
       );
-      logStream.destroy();
+      watcher.close();
+      res.end();
     });
   } catch (error) {
     console.error("Error streaming deployment log:", error);

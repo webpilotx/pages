@@ -190,8 +190,11 @@ function App() {
     };
 
     eventSource.onerror = () => {
-      console.error("Error in log stream connection.");
+      console.error("Error in log stream connection. Retrying...");
       eventSource.close();
+
+      // Retry the connection after a delay
+      setTimeout(() => fetchDeploymentLogStream(deploymentId, pageId), 3000);
     };
 
     // Close the connection when the deployment is complete or the user navigates away
