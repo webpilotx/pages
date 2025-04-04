@@ -45,8 +45,8 @@ function App() {
   };
 
   const handleConnectGitProvider = () => {
-    alert("Redirecting to connect a new Git provider...");
-    // Mock connection process. Replace with actual logic if needed.
+    alert("Redirecting to connect to GitHub...");
+    // Mock connection process for GitHub. Replace with actual logic if needed.
   };
 
   return (
@@ -118,7 +118,7 @@ function App() {
               onClick={handleConnectGitProvider}
               className="mb-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              Connect Git Provider
+              Connect to GitHub
             </button>
             <ul className="space-y-4">
               {repositories.map((repo) => (
