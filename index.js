@@ -4,9 +4,15 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import express from "express";
 import fetch from "node-fetch"; // Import node-fetch
-import path from "path";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
 import ViteExpress from "vite-express";
+import { Worker } from "worker_threads"; // Import Worker from worker_threads
 import { accountsTable, envsTable, pagesTable } from "./schema.js";
+
+// Define __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
@@ -278,18 +284,24 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       });
     }
 
-    // Trigger the build worker asynchronously
-    const workerCommand = `node ${path.join(__dirname, "worker.js")} ${
-      page.id
-    }`;
-    console.log(`Triggering build worker: ${workerCommand}`);
-    exec(workerCommand, (error, stdout, stderr) => {
-      if (error) {
-        console.error(
-          `Error triggering build worker: ${stderr || error.message}`
-        );
+    // Trigger the build worker using a worker thread
+    const worker = new Worker(path.join(__dirname, "worker.js"), {
+      workerData: { pageId: page.id },
+    });
+
+    worker.on("message", (message) => {
+      console.log(`Worker message: ${message}`);
+    });
+
+    worker.on("error", (error) => {
+      console.error(`Worker error: ${error.message}`);
+    });
+
+    worker.on("exit", (code) => {
+      if (code !== 0) {
+        console.error(`Worker stopped with exit code ${code}`);
       } else {
-        console.log(`Build worker output: ${stdout}`);
+        console.log("Worker completed successfully.");
       }
     });
 

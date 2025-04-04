@@ -1,9 +1,10 @@
+import { parentPort, workerData } from "worker_threads";
 import { exec } from "child_process";
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/libsql";
 import fs from "fs/promises";
 import path from "path";
-import { deploymentsTable, envsTable, pagesTable } from "./schema";
+import { deploymentsTable, envsTable, pagesTable } from "./schema.js";
 import { eq } from "drizzle-orm";
 
 const db = drizzle(process.env.DB_FILE_NAME);
@@ -21,10 +22,7 @@ const execPromise = (command) =>
 
 (async () => {
   try {
-    const pageId = process.argv[2];
-    if (!pageId) {
-      throw new Error("Page ID is required");
-    }
+    const { pageId } = workerData;
 
     // Fetch page details
     const [page] = await db
@@ -55,12 +53,12 @@ const execPromise = (command) =>
     if (repoExists) {
       // Run git pull if the repository already exists
       const pullCommand = `cd ${cloneDir} && git pull origin ${page.branch}`;
-      console.log(`Pulling latest changes: ${pullCommand}`);
+      parentPort.postMessage(`Pulling latest changes: ${pullCommand}`);
       await execPromise(pullCommand);
     } else {
       // Clone the repository if it doesn't exist
       const cloneCommand = `git clone --branch ${page.branch} https://github.com/${page.repo}.git ${cloneDir}`;
-      console.log(`Cloning repository: ${cloneCommand}`);
+      parentPort.postMessage(`Cloning repository: ${cloneCommand}`);
       await execPromise(cloneCommand);
     }
 
@@ -87,7 +85,7 @@ const execPromise = (command) =>
 
     if (page.buildScript) {
       const buildCommand = `cd ${cloneDir} && ${page.buildScript}`;
-      console.log(`Running build script: ${buildCommand}`);
+      parentPort.postMessage(`Running build script: ${buildCommand}`);
       try {
         buildOutput = await execPromise(buildCommand);
       } catch (error) {
@@ -105,24 +103,10 @@ const execPromise = (command) =>
       .set({ exitCode, completedAt: new Date().toISOString() })
       .where(eq(deploymentsTable.id, deployment.id));
 
-    console.log(
+    parentPort.postMessage(
       `Deployment for page ID ${pageId} completed with exit code ${exitCode}.`
     );
   } catch (error) {
-    console.error("Error during deployment:", error);
-
-    const deploymentId = process.argv[2];
-    const logDir = path.join(process.env.PAGES_DIR, "deployments");
-    await fs.mkdir(logDir, { recursive: true });
-    const logFilePath = path.join(logDir, `${deploymentId}.log`);
-
-    // Write the error to the log file
-    await fs.writeFile(logFilePath, error.message);
-
-    // Update the deployment status to failure with exit code 1
-    await db
-      .update(deploymentsTable)
-      .set({ exitCode: 1, completedAt: new Date().toISOString() })
-      .where(eq(deploymentsTable.id, deploymentId));
+    parentPort.postMessage(`Error during deployment: ${error.message}`);
   }
 })();
