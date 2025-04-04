@@ -81,47 +81,49 @@ function CreatePage({
         setAccounts(fetchedAccounts || []); // Ensure accounts is always an array
         if (fetchedAccounts?.length > 0) {
           setSelectedAccount(fetchedAccounts[0].login); // Automatically select the first account
-          loadRepositories(fetchedAccounts[0].login);
         }
       })
       .catch((error) => {
         console.error("Error fetching accounts:", error);
         setAccounts([]); // Fallback to an empty array on error
       });
-  }, [fetchAccounts]);
+  }, []); // Only run once on mount
 
-  const loadRepositories = (accountLogin) => {
-    setLoading(true);
-    fetchRepositories(accountLogin)
-      .then((repos) => {
-        setRepositories(repos || []); // Ensure repositories is always an array
-        setCurrentPage(1); // Reset to the first page
-      })
-      .catch((error) => {
-        console.error("Error fetching repositories:", error);
-        setRepositories([]); // Fallback to an empty array on error
-      })
-      .finally(() => setLoading(false));
-  };
+  useEffect(() => {
+    if (selectedAccount) {
+      setLoading(true);
+      fetchRepositories(selectedAccount)
+        .then((repos) => {
+          setRepositories(repos || []); // Ensure repositories is always an array
+          setCurrentPage(1); // Reset to the first page
+        })
+        .catch((error) => {
+          console.error("Error fetching repositories:", error);
+          setRepositories([]); // Fallback to an empty array on error
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [selectedAccount]); // Run when selectedAccount changes
 
   const handleAccountChange = (accountLogin) => {
-    setSelectedAccount(accountLogin);
-    loadRepositories(accountLogin);
+    setSelectedAccount(accountLogin); // Trigger repository loading via useEffect
   };
 
   const handleRepoSelect = (selectedRepo) => {
-    setRepo(selectedRepo);
-    fetchBranches(selectedRepo)
-      .then((fetchedBranches) => {
-        setBranches(fetchedBranches || []); // Ensure branches is always an array
-        if (fetchedBranches?.length > 0) {
-          setBranch(fetchedBranches[0]); // Default to the first branch
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching branches:", error);
-        setBranches([]); // Fallback to an empty array on error
-      });
+    if (repo !== selectedRepo) {
+      setRepo(selectedRepo); // Only update the selected repository if it changes
+      fetchBranches(selectedRepo)
+        .then((fetchedBranches) => {
+          setBranches(fetchedBranches || []); // Ensure branches is always an array
+          if (fetchedBranches?.length > 0) {
+            setBranch(fetchedBranches[0]); // Default to the first branch
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching branches:", error);
+          setBranches([]); // Fallback to an empty array on error
+        });
+    }
   };
 
   const handleAddEnvVar = () => {
