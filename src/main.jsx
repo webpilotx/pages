@@ -53,12 +53,7 @@ function PagesList({ pagesList, handleSelectPage }) {
   );
 }
 
-function CreatePage({
-  handleCreateNewPage,
-  fetchAccounts,
-  fetchRepositories,
-  fetchBranches,
-}) {
+function CreatePage() {
   const [step, setStep] = useState(1);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [repo, setRepo] = useState("");
@@ -75,6 +70,59 @@ function CreatePage({
   const reposPerPage = 6;
 
   const navigate = useNavigate();
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await fetch("/pages/api/provider-accounts");
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching accounts:", error);
+      return [];
+    }
+  };
+
+  const fetchRepositories = async (accountLogin) => {
+    try {
+      const response = await fetch(
+        `/pages/api/repositories?account=${accountLogin}`
+      );
+      const data = await response.json();
+      return data.repositories;
+    } catch (error) {
+      console.error("Error fetching repositories:", error);
+      return [];
+    }
+  };
+
+  const fetchBranches = async (repoFullName) => {
+    try {
+      const response = await fetch(`/pages/api/branches?repo=${repoFullName}`);
+      const data = await response.json();
+      return data.branches;
+    } catch (error) {
+      console.error("Error fetching branches:", error);
+      return [];
+    }
+  };
+
+  const handleCreateNewPage = async (newPage) => {
+    try {
+      const response = await fetch("/pages/api/create-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newPage),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create page");
+      }
+
+      navigate("/pages");
+    } catch (error) {
+      console.error("Error creating page:", error);
+    }
+  };
 
   useEffect(() => {
     fetchAccounts()
@@ -155,7 +203,6 @@ function CreatePage({
   const handleSubmit = async (e) => {
     e.preventDefault();
     await handleCreateNewPage({ repo, name, branch, buildScript, envVars });
-    navigate("/pages");
   };
 
   const indexOfLastRepo = currentPage * reposPerPage;
@@ -401,17 +448,7 @@ function App() {
                 <PagesList pagesList={pagesList} handleSelectPage={() => {}} />
               }
             />
-            <Route
-              path="/pages/new"
-              element={
-                <CreatePage
-                  handleCreateNewPage={() => {}}
-                  fetchAccounts={() => {}}
-                  fetchRepositories={() => {}}
-                  fetchBranches={() => {}}
-                />
-              }
-            />
+            <Route path="/pages/new" element={<CreatePage />} />
           </Routes>
         </main>
       </div>
