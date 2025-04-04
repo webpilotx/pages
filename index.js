@@ -54,20 +54,44 @@ app.get("/pages/api/repositories", async (req, res) => {
     const allRepositories = (
       await Promise.all(
         accounts.map(async (account) => {
-          const response = await fetch("https://api.github.com/user/repos", {
+          const userReposResponse = await fetch(
+            "https://api.github.com/user/repos",
+            {
+              headers: {
+                Authorization: `Bearer ${account.accessToken}`,
+              },
+            }
+          );
+
+          const orgsResponse = await fetch("https://api.github.com/user/orgs", {
             headers: {
               Authorization: `Bearer ${account.accessToken}`,
             },
           });
 
-          if (!response.ok) {
-            console.error(
-              `Error fetching repositories for account ${account.login}`
-            );
-            return [];
-          }
+          const userRepos = userReposResponse.ok
+            ? await userReposResponse.json()
+            : [];
+          const orgs = orgsResponse.ok ? await orgsResponse.json() : [];
 
-          return await response.json();
+          // Fetch repositories for each organization
+          const orgRepos = (
+            await Promise.all(
+              orgs.map(async (org) => {
+                const orgReposResponse = await fetch(
+                  `https://api.github.com/orgs/${org.login}/repos`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${account.accessToken}`,
+                    },
+                  }
+                );
+                return orgReposResponse.ok ? await orgReposResponse.json() : [];
+              })
+            )
+          ).flat();
+
+          return [...userRepos, ...orgRepos];
         })
       )
     ).flat();
