@@ -54,7 +54,6 @@ function PagesList({ pagesList, handleSelectPage }) {
 }
 
 function CreatePage({ handleCreateNewPage, fetchAccounts, fetchRepositories }) {
-  const [step, setStep] = useState(1);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [repo, setRepo] = useState("");
   const [name, setName] = useState("");
@@ -65,33 +64,18 @@ function CreatePage({ handleCreateNewPage, fetchAccounts, fetchRepositories }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (step === 1) {
-      fetchAccounts().then((fetchedAccounts) => {
-        setAccounts(fetchedAccounts);
-        if (fetchedAccounts.length > 0) {
-          setSelectedAccount(fetchedAccounts[0].login); // Automatically select the first account
-          fetchRepositories(fetchedAccounts[0].login).then(setRepositories);
-        }
-      });
-    } else if (step === 2 && selectedAccount) {
-      fetchRepositories(selectedAccount).then(setRepositories);
-    }
-  }, [step, selectedAccount, fetchAccounts, fetchRepositories]);
+    fetchAccounts().then((fetchedAccounts) => {
+      setAccounts(fetchedAccounts);
+      if (fetchedAccounts.length > 0) {
+        setSelectedAccount(fetchedAccounts[0].login); // Automatically select the first account
+        fetchRepositories(fetchedAccounts[0].login).then(setRepositories);
+      }
+    });
+  }, [fetchAccounts, fetchRepositories]);
 
-  const handleNext = () => {
-    if (step === 1 && selectedAccount) {
-      setStep(2);
-    } else if (step === 2 && repo) {
-      setStep(3);
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    } else {
-      navigate("/pages");
-    }
+  const handleAccountChange = (accountLogin) => {
+    setSelectedAccount(accountLogin);
+    fetchRepositories(accountLogin).then(setRepositories);
   };
 
   const handleSubmit = async (e) => {
@@ -102,156 +86,82 @@ function CreatePage({ handleCreateNewPage, fetchAccounts, fetchRepositories }) {
 
   return (
     <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
-      <h2 className="text-2xl font-bold mb-4">
-        {step === 1
-          ? "Choose Provider Account"
-          : step === 2
-          ? "Choose Repository"
-          : "Create New Page"}
-      </h2>
-      {step === 1 && (
-        <div>
-          <label className="block mb-2">Provider Account</label>
-          <select
-            value={selectedAccount}
-            onChange={(e) => {
-              setSelectedAccount(e.target.value);
-              fetchRepositories(e.target.value).then(setRepositories);
-            }}
+      <h2 className="text-2xl font-bold mb-4">Choose Repository</h2>
+      <div>
+        <label className="block mb-2">Provider Account</label>
+        <select
+          value={selectedAccount}
+          onChange={(e) => handleAccountChange(e.target.value)}
+          className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+          required
+        >
+          <option value="" disabled>
+            Select an account
+          </option>
+          {accounts.map((account) => (
+            <option key={account.login} value={account.login}>
+              {account.login}
+            </option>
+          ))}
+        </select>
+        <a
+          href={`https://github.com/login/oauth/authorize?client_id=${
+            import.meta.env.VITE_GITHUB_CLIENT_ID
+          }&scope=repo`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mt-2 text-blue-500 hover:underline"
+        >
+          Authorize more GitHub accounts
+        </a>
+      </div>
+      <div className="mt-6">
+        <label className="block mb-2">Repository</label>
+        <div className="grid grid-cols-2 gap-4">
+          {repositories.map((repository) => (
+            <div
+              key={repository.full_name}
+              className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
+                repo === repository.full_name
+                  ? "border-blue-500"
+                  : "border-gray-300"
+              }`}
+              onClick={() => setRepo(repository.full_name)}
+            >
+              {repository.full_name}
+            </div>
+          ))}
+        </div>
+      </div>
+      <form onSubmit={handleSubmit} className="mt-6">
+        <div className="mb-4">
+          <label className="block mb-2">Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
             required
-          >
-            <option value="" disabled>
-              Select an account
-            </option>
-            {accounts.map((account) => (
-              <option key={account.login} value={account.login}>
-                {account.login}
-              </option>
-            ))}
-          </select>
-          <a
-            href={`https://github.com/login/oauth/authorize?client_id=${
-              import.meta.env.VITE_GITHUB_CLIENT_ID
-            }&scope=repo`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block mt-2 text-blue-500 hover:underline"
-          >
-            Authorize more GitHub accounts
-          </a>
-          <div className="mt-4 flex justify-between">
-            <button
-              onClick={handleBack}
-              className="px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!selectedAccount}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
+          />
         </div>
-      )}
-      {step === 2 && (
-        <div>
-          <label className="block mb-2">Repository</label>
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-300">
-              <thead>
-                <tr>
-                  <th className="px-4 py-2 border-b">Full Name</th>
-                  <th className="px-4 py-2 border-b">Description</th>
-                  <th className="px-4 py-2 border-b">Visibility</th>
-                  <th className="px-4 py-2 border-b">Select</th>
-                </tr>
-              </thead>
-              <tbody>
-                {repositories.map((repository) => (
-                  <tr key={repository.full_name}>
-                    <td className="px-4 py-2 border-b">
-                      {repository.full_name}
-                    </td>
-                    <td className="px-4 py-2 border-b">
-                      {repository.description || "No description"}
-                    </td>
-                    <td className="px-4 py-2 border-b">
-                      {repository.private ? "Private" : "Public"}
-                    </td>
-                    <td className="px-4 py-2 border-b text-center">
-                      <input
-                        type="radio"
-                        name="repository"
-                        value={repository.full_name}
-                        checked={repo === repository.full_name}
-                        onChange={(e) => setRepo(e.target.value)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-4 flex justify-between">
-            <button
-              onClick={handleBack}
-              className="px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!repo}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
+        <div className="mb-4">
+          <label className="block mb-2">Branch</label>
+          <input
+            type="text"
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+            className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+            required
+          />
         </div>
-      )}
-      {step === 3 && (
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block mb-2">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block mb-2">Branch</label>
-            <input
-              type="text"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-              required
-            />
-          </div>
-          <div className="flex justify-between">
-            <button
-              onClick={handleBack}
-              type="button"
-              className="px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
-            >
-              Back
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Create
-            </button>
-          </div>
-        </form>
-      )}
+        <button
+          type="submit"
+          disabled={!repo}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+        >
+          Create
+        </button>
+      </form>
     </div>
   );
 }
