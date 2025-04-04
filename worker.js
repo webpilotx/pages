@@ -3,7 +3,7 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/libsql";
 import fs from "fs/promises";
 import path from "path";
-import { envsTable, pagesTable } from "./schema";
+import { deploymentsTable, envsTable, pagesTable } from "./schema";
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
@@ -57,14 +57,13 @@ const execPromise = (command) =>
 
     // Insert a new deployment record
     const [deployment] = await db
-      .insert("deployments_table")
+      .insert(deploymentsTable)
       .values({
         pageId: page.id,
-        status: "in_progress",
       })
-      .returning({ id: "id" });
+      .returning({ id: deploymentsTable.id });
 
-    const logDir = path.join(process.env.PAGES_DIR, "logs");
+    const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fs.mkdir(logDir, { recursive: true });
     const logFilePath = path.join(logDir, `${deployment.id}.log`);
 
@@ -80,9 +79,9 @@ const execPromise = (command) =>
 
     // Update the deployment status to success
     await db
-      .update("deployments_table")
-      .set({ status: "success" })
-      .where(eq("id", deployment.id));
+      .update(deploymentsTable)
+      .set({ exitCode: 0, completedAt: new Date().toISOString() })
+      .where(eq(deploymentsTable.id, deployment.id));
 
     console.log(`Deployment for page ID ${pageId} completed successfully.`);
   } catch (error) {
