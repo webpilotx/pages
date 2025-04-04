@@ -20,23 +20,38 @@ function App() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
-      <h1 className="text-4xl font-bold mb-6">Provider Accounts</h1>
-      <ul className="space-y-4">
-        {providerAccounts.map((account) => (
-          <li
-            key={account.providerAccountId}
-            className="p-4 bg-gray-800 rounded-lg shadow-md"
+    <div className="min-h-screen flex flex-col bg-gray-900 text-white">
+      {/* Navigation Bar */}
+      <nav className="bg-gray-800 border-b border-gray-700">
+        <div className="container mx-auto px-4 py-3 flex items-center">
+          <a
+            href="/"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            <p>
-              <strong>Provider:</strong> {account.provider}
-            </p>
-            <p>
-              <strong>Type:</strong> {account.type}
-            </p>
-          </li>
-        ))}
-      </ul>
+            Home
+          </a>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Provider Accounts</h1>
+        <ul className="space-y-4">
+          {providerAccounts.map((account) => (
+            <li
+              key={account.providerAccountId}
+              className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700"
+            >
+              <p>
+                <strong>Provider:</strong> {account.provider}
+              </p>
+              <p>
+                <strong>Type:</strong> {account.type}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </main>
     </div>
   );
 }
