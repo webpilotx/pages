@@ -118,6 +118,13 @@ function App() {
       if (isRunning) {
         const interval = setInterval(async () => {
           await fetchLogs();
+
+          // Safeguard: Ensure selectedDeployment is not null
+          if (!selectedDeployment) {
+            clearInterval(interval);
+            return;
+          }
+
           const updatedResponse = await fetch(
             `/pages/api/deployments?pageId=${selectedDeployment.pageId}`
           );
