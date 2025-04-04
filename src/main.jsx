@@ -38,16 +38,34 @@ function PagesList({ pagesList, handleSelectPage, handleCreatePage }) {
 function PageDetails({
   selectedPage,
   branches,
-  branch,
-  setBranch,
-  buildScript,
-  setBuildScript,
-  envVars,
-  handleEnvVarChange,
-  handleAddEnvVar,
-  handleRemoveEnvVar,
+  fetchBranches,
   handleSaveAndDeploy,
 }) {
+  const [branch, setBranch] = useState(selectedPage.branch || "");
+  const [buildScript, setBuildScript] = useState(
+    selectedPage.buildScript || ""
+  );
+  const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
+
+  useEffect(() => {
+    fetchBranches(selectedPage.repo);
+  }, [selectedPage.repo, fetchBranches]);
+
+  const handleAddEnvVar = () => {
+    setEnvVars([...envVars, { name: "", value: "" }]);
+  };
+
+  const handleRemoveEnvVar = (index) => {
+    const updatedEnvVars = envVars.filter((_, i) => i !== index);
+    setEnvVars(updatedEnvVars);
+  };
+
+  const handleEnvVarChange = (index, field, value) => {
+    const updatedEnvVars = [...envVars];
+    updatedEnvVars[index][field] = value;
+    setEnvVars(updatedEnvVars);
+  };
+
   return (
     <div>
       <div className="mb-4">
@@ -129,7 +147,7 @@ function PageDetails({
         </button>
       </div>
       <button
-        onClick={handleSaveAndDeploy}
+        onClick={() => handleSaveAndDeploy(branch, buildScript, envVars)}
         disabled={!branch || !selectedPage.name}
         className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
       >
@@ -143,10 +161,16 @@ function DeploymentLogs({
   deployments,
   selectedDeployment,
   handleSelectDeployment,
-  isLoadingLog,
-  deploymentLogs,
-  selectedPage,
+  fetchDeploymentLog,
 }) {
+  const [logContent, setLogContent] = useState("");
+
+  useEffect(() => {
+    if (selectedDeployment) {
+      fetchDeploymentLog(selectedDeployment.id).then(setLogContent);
+    }
+  }, [selectedDeployment, fetchDeploymentLog]);
+
   return (
     <div>
       <h3 className="text-xl font-bold mb-4">Deployment Logs</h3>
@@ -179,16 +203,9 @@ function DeploymentLogs({
         </ul>
       </div>
       {selectedDeployment ? (
-        isLoadingLog ? (
-          <div className="text-center text-gray-500">Loading logs...</div>
-        ) : (
-          <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
-            <pre>
-              {deploymentLogs[selectedPage.id] ||
-                "No logs available for this deployment."}
-            </pre>
-          </div>
-        )
+        <div className="p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+          <pre>{logContent || "No logs available for this deployment."}</pre>
+        </div>
       ) : (
         <div className="text-center text-gray-500">No deployment selected.</div>
       )}
@@ -198,22 +215,11 @@ function DeploymentLogs({
 
 function App() {
   const [pagesList, setPagesList] = useState([]);
-  const [repositories, setRepositories] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedRepo, setSelectedRepo] = useState(null);
-  const [branches, setBranches] = useState([]);
-  const [pageName, setPageName] = useState("");
-  const [branch, setBranch] = useState("");
-  const [buildScript, setBuildScript] = useState("");
-  const [envVars, setEnvVars] = useState([{ name: "", value: "" }]);
-  const [editPage, setEditPage] = useState(null);
   const [selectedPage, setSelectedPage] = useState(null);
-  const repositoriesPerPage = 12;
-  const [activeTab, setActiveTab] = useState("details");
-  const [deploymentLogs, setDeploymentLogs] = useState({});
+  const [branches, setBranches] = useState([]);
   const [deployments, setDeployments] = useState([]);
   const [selectedDeployment, setSelectedDeployment] = useState(null);
-  const [isLoadingLog, setIsLoadingLog] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
 
   const fetchPagesList = async () => {
     try {
@@ -225,30 +231,11 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    fetchPagesList();
-
-    async function fetchAllRepositories() {
-      try {
-        const response = await fetch("/pages/api/repositories");
-        const data = await response.json();
-        setRepositories(data.repositories);
-      } catch (error) {
-        console.error("Error fetching repositories:", error);
-      }
-    }
-
-    fetchAllRepositories();
-  }, []);
-
   const fetchBranches = async (repoFullName) => {
     try {
       const response = await fetch(`/pages/api/branches?repo=${repoFullName}`);
       const data = await response.json();
       setBranches(data.branches);
-      if (data.branches.length > 0) {
-        setBranch(data.branches[0]);
-      }
     } catch (error) {
       console.error("Error fetching branches:", error);
     }
@@ -268,70 +255,39 @@ function App() {
     }
   };
 
-  const fetchDeploymentLog = async (deploymentId, pageId) => {
-    if (!deploymentId) {
-      setDeploymentLogs((prevLogs) => ({
-        ...prevLogs,
-        [pageId]: "No deployment selected.",
-      }));
-      return;
-    }
-
+  const fetchDeploymentLog = async (deploymentId) => {
     try {
-      setIsLoadingLog(true);
       const response = await fetch(
         `/pages/api/deployment-log?deploymentId=${deploymentId}`
       );
       if (response.ok) {
-        const logs = await response.text();
-        setDeploymentLogs((prevLogs) => ({
-          ...prevLogs,
-          [pageId]: logs,
-        }));
+        return await response.text();
       } else {
-        setDeploymentLogs((prevLogs) => ({
-          ...prevLogs,
-          [pageId]: "Failed to fetch deployment logs.",
-        }));
+        console.error("Failed to fetch deployment logs.");
+        return "Failed to fetch deployment logs.";
       }
     } catch (error) {
       console.error("Error fetching deployment log:", error);
-      setDeploymentLogs((prevLogs) => ({
-        ...prevLogs,
-        [pageId]: "Error fetching deployment log.",
-      }));
-    } finally {
-      setIsLoadingLog(false);
+      return "Error fetching deployment log.";
     }
   };
 
-  const handleAddEnvVar = () => {
-    setEnvVars([...envVars, { name: "", value: "" }]);
-  };
-
-  const handleRemoveEnvVar = (index) => {
-    const updatedEnvVars = envVars.filter((_, i) => i !== index);
-    setEnvVars(updatedEnvVars);
-  };
-
-  const handleEnvVarChange = (index, field, value) => {
-    const updatedEnvVars = [...envVars];
-    updatedEnvVars[index][field] = value;
-    setEnvVars(updatedEnvVars);
-  };
-
-  const handleSaveAndDeploy = async () => {
+  const handleSaveAndDeploy = async (branch, buildScript, envVars) => {
     try {
+      if (!selectedPage.repo) {
+        alert("Repository is not selected.");
+        return;
+      }
+
       const response = await fetch("/pages/api/save-and-deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          selectedRepo,
-          pageName,
+          selectedRepo: { full_name: selectedPage.repo }, // Pass repo full_name
+          pageName: selectedPage.name,
           branch,
           buildScript,
           envVars,
-          editPage,
         }),
       });
 
@@ -346,28 +302,7 @@ function App() {
       console.log("Page saved and deployment triggered successfully:", data);
 
       await fetchPagesList();
-
-      const pageId = editPage ? editPage.id : data.pageId;
-      const deploymentsResponse = await fetch(
-        `/pages/api/deployments?pageId=${pageId}`
-      );
-      if (deploymentsResponse.ok) {
-        const deploymentsData = await deploymentsResponse.json();
-        setDeployments(deploymentsData);
-
-        const latestDeployment = deploymentsData.find(
-          (deployment) => deployment.id === data.deploymentId
-        );
-        if (latestDeployment) {
-          setSelectedDeployment(latestDeployment);
-          await fetchDeploymentLog(
-            latestDeployment.id,
-            pageId,
-            latestDeployment.exitCode === null
-          );
-        }
-      }
-
+      await fetchDeployments(selectedPage.id);
       setActiveTab("logs");
     } catch (error) {
       console.error("Error during save and deploy:", error);
@@ -375,56 +310,12 @@ function App() {
     }
   };
 
-  const handleSelectDeployment = async (deployment) => {
-    try {
-      setSelectedDeployment(deployment);
-      await fetchDeploymentLog(deployment.id, selectedPage.id);
-    } catch (error) {
-      console.error("Error fetching deployment details or logs:", error);
-      setDeploymentLogs((prevLogs) => ({
-        ...prevLogs,
-        [selectedPage.id]: "Error fetching deployment logs.",
-      }));
-    }
-  };
-
-  const handleTabChange = async (tab) => {
-    setActiveTab(tab);
-
-    if (tab === "logs" && selectedPage) {
-      try {
-        const response = await fetch(
-          `/pages/api/deployments?pageId=${selectedPage.id}`
-        );
-        if (response.ok) {
-          const deploymentsData = await response.json();
-          setDeployments(deploymentsData);
-        } else {
-          console.error("Failed to fetch deployments.");
-        }
-      } catch (error) {
-        console.error("Error fetching deployments:", error);
-      }
-    }
-  };
-
-  const handleCreatePage = () => {
-    setEditPage(null);
-    setPageName("");
-    setBranch("");
-    setBuildScript("");
-    setEnvVars([{ name: "", value: "" }]);
-    setSelectedRepo(null);
-    setActiveTab("details");
-  };
+  useEffect(() => {
+    fetchPagesList();
+  }, []);
 
   const handleSelectPage = (page) => {
     setSelectedPage(page);
-    setEditPage(page);
-    setPageName(page.name);
-    setBranch(page.branch);
-    setBuildScript(page.buildScript || "");
-    setEnvVars([]);
     fetchBranches(page.repo);
     fetchDeployments(page.id);
     setActiveTab("details");
@@ -432,24 +323,7 @@ function App() {
 
   const handleBackToPagesList = () => {
     setSelectedPage(null);
-    setEditPage(null);
-    setPageName("");
-    setBranch("");
-    setBuildScript("");
-    setEnvVars([{ name: "", value: "" }]);
-    setSelectedRepo(null);
     setActiveTab("details");
-  };
-
-  const paginatedRepositories = repositories.slice(
-    (currentPage - 1) * repositoriesPerPage,
-    currentPage * repositoriesPerPage
-  );
-
-  const totalPages = Math.ceil(repositories.length / repositoriesPerPage);
-
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
   };
 
   return (
@@ -469,7 +343,7 @@ function App() {
           <PagesList
             pagesList={pagesList}
             handleSelectPage={handleSelectPage}
-            handleCreatePage={handleCreatePage}
+            handleCreatePage={() => setSelectedPage({})}
           />
         ) : (
           <div>
@@ -508,14 +382,7 @@ function App() {
                 <PageDetails
                   selectedPage={selectedPage}
                   branches={branches}
-                  branch={branch}
-                  setBranch={setBranch}
-                  buildScript={buildScript}
-                  setBuildScript={setBuildScript}
-                  envVars={envVars}
-                  handleEnvVarChange={handleEnvVarChange}
-                  handleAddEnvVar={handleAddEnvVar}
-                  handleRemoveEnvVar={handleRemoveEnvVar}
+                  fetchBranches={fetchBranches}
                   handleSaveAndDeploy={handleSaveAndDeploy}
                 />
               )}
@@ -523,10 +390,8 @@ function App() {
                 <DeploymentLogs
                   deployments={deployments}
                   selectedDeployment={selectedDeployment}
-                  handleSelectDeployment={handleSelectDeployment}
-                  isLoadingLog={isLoadingLog}
-                  deploymentLogs={deploymentLogs}
-                  selectedPage={selectedPage}
+                  handleSelectDeployment={setSelectedDeployment}
+                  fetchDeploymentLog={fetchDeploymentLog}
                 />
               )}
             </div>

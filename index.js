@@ -247,7 +247,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
     const { selectedRepo, pageName, branch, buildScript, envVars, editPage } =
       req.body;
 
-    if (!pageName || !branch) {
+    if (!pageName || !branch || !selectedRepo || !selectedRepo.full_name) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -260,6 +260,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
           name: pageName,
           branch,
           buildScript: buildScript || null,
+          repo: selectedRepo.full_name, // Ensure repo is updated
         })
         .where(eq(pagesTable.id, editPage.id))
         .returning({ id: pagesTable.id });
@@ -268,7 +269,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       [page] = await db
         .insert(pagesTable)
         .values({
-          repo: selectedRepo.full_name,
+          repo: selectedRepo.full_name, // Ensure repo is set
           name: pageName,
           branch,
           buildScript: buildScript || null,
