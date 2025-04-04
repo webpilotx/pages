@@ -3,22 +3,11 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 
 function App() {
-  const [providerAccounts, setProviderAccounts] = useState([]);
   const [pagesList, setPagesList] = useState([]);
   const [repositories, setRepositories] = useState([]);
   const [showRepositories, setShowRepositories] = useState(false);
 
   useEffect(() => {
-    async function fetchProviderAccounts() {
-      try {
-        const response = await fetch("/pages/api/provider-accounts");
-        const data = await response.json();
-        setProviderAccounts(data);
-      } catch (error) {
-        console.error("Error fetching provider accounts:", error);
-      }
-    }
-
     async function fetchPagesList() {
       try {
         const response = await fetch("/pages/api/pages-list");
@@ -29,7 +18,6 @@ function App() {
       }
     }
 
-    fetchProviderAccounts();
     fetchPagesList();
   }, []);
 
@@ -72,23 +60,6 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Provider Accounts</h1>
-        <ul className="space-y-4">
-          {providerAccounts.map((account) => (
-            <li
-              key={account.providerAccountId}
-              className="p-4 bg-gray-800 rounded-md shadow-sm border border-gray-700"
-            >
-              <p>
-                <strong>Provider:</strong> {account.provider}
-              </p>
-              <p>
-                <strong>Type:</strong> {account.type}
-              </p>
-            </li>
-          ))}
-        </ul>
-
         <h1 className="text-3xl font-bold mt-12 mb-6">Pages List</h1>
         <button
           onClick={handleFetchRepositories}
