@@ -411,10 +411,289 @@ function CreatePage() {
 }
 
 function PageDetails({ pageId }) {
+  const [activeTab, setActiveTab] = useState("details");
+  const [pageDetails, setPageDetails] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [deployments, setDeployments] = useState([]);
+  const [selectedDeployment, setSelectedDeployment] = useState(null);
+  const [logContent, setLogContent] = useState("");
+
+  const fetchPageDetails = async () => {
+    try {
+      const response = await fetch(`/pages/api/pages-list`);
+      const pages = await response.json();
+      const page = pages.find((p) => p.id === parseInt(pageId));
+      setPageDetails(page);
+    } catch (error) {
+      console.error("Error fetching page details:", error);
+    }
+  };
+
+  const fetchBranches = async (repo) => {
+    try {
+      setLoadingBranches(true);
+      const response = await fetch(`/pages/api/branches?repo=${repo}`);
+      const data = await response.json();
+      setBranches(data.branches || []);
+    } catch (error) {
+      console.error("Error fetching branches:", error);
+    } finally {
+      setLoadingBranches(false);
+    }
+  };
+
+  const fetchDeployments = async () => {
+    try {
+      const response = await fetch(`/pages/api/deployments?pageId=${pageId}`);
+      const data = await response.json();
+      setDeployments(data);
+    } catch (error) {
+      console.error("Error fetching deployments:", error);
+    }
+  };
+
+  const fetchDeploymentLog = async (deploymentId) => {
+    try {
+      const response = await fetch(
+        `/pages/api/deployment-log?deploymentId=${deploymentId}`
+      );
+      if (response.ok) {
+        setLogContent(await response.text());
+      } else {
+        setLogContent("Failed to fetch deployment logs.");
+      }
+    } catch (error) {
+      console.error("Error fetching deployment log:", error);
+      setLogContent("Error fetching deployment log.");
+    }
+  };
+
+  const handleSaveAndDeploy = async () => {
+    try {
+      const response = await fetch("/pages/api/save-and-deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedRepo: { full_name: pageDetails.repo },
+          pageName: pageDetails.name,
+          branch: pageDetails.branch,
+          buildScript: pageDetails.buildScript,
+          envVars: pageDetails.envVars,
+          editPage: pageDetails,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save and deploy");
+      }
+
+      alert("Page saved and deployment triggered successfully.");
+      fetchDeployments();
+    } catch (error) {
+      console.error("Error saving and deploying:", error);
+      alert("Failed to save and deploy.");
+    }
+  };
+
+  const handleDeletePage = async () => {
+    try {
+      const response = await fetch(`/pages/api/pages/${pageId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete page");
+      }
+
+      alert("Page deleted successfully.");
+      window.location.href = "/pages";
+    } catch (error) {
+      console.error("Error deleting page:", error);
+      alert("Failed to delete page.");
+    }
+  };
+
+  useEffect(() => {
+    fetchPageDetails();
+    fetchDeployments();
+  }, [pageId]);
+
+  useEffect(() => {
+    if (pageDetails?.repo) {
+      fetchBranches(pageDetails.repo);
+    }
+  }, [pageDetails?.repo]);
+
   return (
     <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
-      <h2 className="text-2xl font-bold mb-4">Page Details</h2>
-      <p>Details for page ID: {pageId}</p>
+      <div className="mb-4">
+        <div className="flex space-x-4 border-b border-gray-300">
+          <button
+            onClick={() => setActiveTab("details")}
+            className={`px-4 py-2 ${
+              activeTab === "details"
+                ? "border-b-2 border-blue-500 text-blue-500"
+                : "text-gray-500"
+            }`}
+          >
+            Details
+          </button>
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`px-4 py-2 ${
+              activeTab === "logs"
+                ? "border-b-2 border-blue-500 text-blue-500"
+                : "text-gray-500"
+            }`}
+          >
+            Logs
+          </button>
+          <button
+            onClick={() => setActiveTab("delete")}
+            className={`px-4 py-2 ${
+              activeTab === "delete"
+                ? "border-b-2 border-blue-500 text-blue-500"
+                : "text-gray-500"
+            }`}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "details" && pageDetails && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Edit Page Details</h2>
+          <div className="mb-4">
+            <label className="block mb-2">Branch</label>
+            {loadingBranches ? (
+              <p className="text-gray-500">Loading branches...</p>
+            ) : (
+              <select
+                value={pageDetails.branch}
+                onChange={(e) =>
+                  setPageDetails({ ...pageDetails, branch: e.target.value })
+                }
+                className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              >
+                <option value="" disabled>
+                  Select a branch
+                </option>
+                {branches.map((branch) => (
+                  <option key={branch} value={branch}>
+                    {branch}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2">Build Script</label>
+            <textarea
+              value={pageDetails.buildScript || ""}
+              onChange={(e) =>
+                setPageDetails({ ...pageDetails, buildScript: e.target.value })
+              }
+              className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              rows="4"
+            ></textarea>
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2">Environment Variables</label>
+            {pageDetails.envVars.map((env, index) => (
+              <div key={index} className="flex space-x-4 mb-2">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={env.name}
+                  onChange={(e) => {
+                    const updatedEnvVars = [...pageDetails.envVars];
+                    updatedEnvVars[index].name = e.target.value;
+                    setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
+                  }}
+                  className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                />
+                <input
+                  type="text"
+                  placeholder="Value"
+                  value={env.value}
+                  onChange={(e) => {
+                    const updatedEnvVars = [...pageDetails.envVars];
+                    updatedEnvVars[index].value = e.target.value;
+                    setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
+                  }}
+                  className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={handleSaveAndDeploy}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Save and Deploy
+          </button>
+        </div>
+      )}
+
+      {activeTab === "logs" && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Deployment Logs</h2>
+          <ul className="space-y-2">
+            {deployments.map((deployment) => (
+              <li
+                key={deployment.id}
+                className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
+                  selectedDeployment?.id === deployment.id
+                    ? "border-blue-500"
+                    : "border-gray-300"
+                }`}
+                onClick={() => {
+                  setSelectedDeployment(deployment);
+                  fetchDeploymentLog(deployment.id);
+                }}
+              >
+                <p>
+                  <strong>Start Time:</strong>{" "}
+                  {new Date(deployment.createdAt).toLocaleString()}
+                </p>
+                <p>
+                  <strong>Status:</strong>{" "}
+                  {deployment.exitCode === null
+                    ? "Running"
+                    : deployment.exitCode === 0
+                    ? "Success"
+                    : "Failed"}
+                </p>
+              </li>
+            ))}
+          </ul>
+          {selectedDeployment && (
+            <div className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+              <pre>
+                {logContent || "No logs available for this deployment."}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "delete" && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Delete Page</h2>
+          <p className="mb-4 text-gray-700">
+            Deleting this page will remove all deployments, logs, and the cloned
+            repository from disk. This action cannot be undone.
+          </p>
+          <button
+            onClick={handleDeletePage}
+            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+          >
+            Delete Page
+          </button>
+        </div>
+      )}
     </div>
   );
 }
