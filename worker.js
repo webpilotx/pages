@@ -31,14 +31,20 @@ const sendToMainThread = (action, data) =>
   try {
     const { pageId } = workerData;
 
+    console.log(`Worker started for page ID: ${pageId}`);
+
     // Fetch page details
     const page = await sendToMainThread("fetchPageDetails", { pageId });
     if (!page) {
       throw new Error(`Page with ID ${pageId} not found`);
     }
+    console.log(`Fetched page details: ${JSON.stringify(page, null, 2)}`);
 
     // Fetch environment variables
     const envVars = await sendToMainThread("fetchEnvVars", { pageId });
+    console.log(
+      `Fetched environment variables: ${JSON.stringify(envVars, null, 2)}`
+    );
 
     // Determine the repository directory
     const cloneDir = path.join(process.env.PAGES_DIR, String(pageId));
@@ -72,6 +78,9 @@ const sendToMainThread = (action, data) =>
     const deployment = await sendToMainThread("insertDeployment", {
       pageId: page.id,
     });
+    console.log(
+      `Created deployment record: ${JSON.stringify(deployment, null, 2)}`
+    );
 
     const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fs.mkdir(logDir, { recursive: true });
@@ -93,17 +102,20 @@ const sendToMainThread = (action, data) =>
 
     // Write the output to the log file
     await fs.writeFile(logFilePath, buildOutput);
+    console.log(`Build output written to log file: ${logFilePath}`);
 
     // Update the deployment status with the exit code
     await sendToMainThread("updateDeployment", {
       deploymentId: deployment.id,
       values: { exitCode, completedAt: new Date().toISOString() },
     });
+    console.log(`Updated deployment status for ID: ${deployment.id}`);
 
     parentPort.postMessage(
       `Deployment for page ID ${pageId} completed with exit code ${exitCode}.`
     );
   } catch (error) {
+    console.error(`Error during deployment: ${error.message}`);
     parentPort.postMessage(`Error during deployment: ${error.message}`);
   }
 })();
