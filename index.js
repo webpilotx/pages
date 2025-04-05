@@ -565,6 +565,16 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
       return res.status(400).json({ error: "Missing pageId parameter" });
     }
 
+    // Fetch the page details to get the name for the service
+    const [page] = await db
+      .select()
+      .from(pagesTable)
+      .where(eq(pagesTable.id, pageId));
+
+    if (!page) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+
     // Delete the page itself (cascading deletions for related tables)
     const deletedPage = await db
       .delete(pagesTable)
@@ -576,7 +586,7 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
     }
 
     // Delete the corresponding folder in PAGES_DIR using pageId
-    const pageFolderPath = path.join(process.env.PAGES_DIR, pageId);
+    const pageFolderPath = path.join(process.env.PAGES_DIR, "pages", pageId);
     try {
       await fsPromises.rm(pageFolderPath, { recursive: true, force: true });
       console.log(`Deleted folder: ${pageFolderPath}`);
@@ -584,7 +594,31 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
       console.error(`Failed to delete folder ${pageFolderPath}:`, folderError);
     }
 
-    res.status(200).json({ message: "Page and folder deleted successfully" });
+    // Purge the systemd service
+    const serviceName = `webpilotx-pages-${page.name}.service`;
+    const userSystemdDir = path.join(process.env.HOME, ".config/systemd/user");
+    const serviceFilePath = path.join(userSystemdDir, serviceName);
+
+    try {
+      // Stop and disable the service
+      await execPromise(`systemctl --user stop ${serviceName}`);
+      await execPromise(`systemctl --user disable ${serviceName}`);
+      console.log(`Service ${serviceName} stopped and disabled.`);
+
+      // Remove the service file
+      await fsPromises.unlink(serviceFilePath);
+      console.log(`Service file ${serviceFilePath} deleted.`);
+
+      // Reload systemd
+      await execPromise("systemctl --user daemon-reload");
+      console.log("Systemd reloaded after service removal.");
+    } catch (error) {
+      console.error(`Error purging service ${serviceName}:`, error);
+    }
+
+    res
+      .status(200)
+      .json({ message: "Page, folder, and service deleted successfully" });
   } catch (error) {
     console.error("Error deleting page:", error);
     res.status(500).json({ error: "Failed to delete page" });

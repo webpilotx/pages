@@ -843,7 +843,7 @@ function Settings() {
         throw new Error(errorData.error || "Failed to delete page");
       }
 
-      alert("Page deleted successfully.");
+      alert("Page and associated service deleted successfully.");
       window.location.href = "/pages";
     } catch (error) {
       console.error("Error deleting page:", error);
@@ -855,8 +855,9 @@ function Settings() {
     <div>
       <h2 className="text-2xl font-bold mb-4">Settings</h2>
       <p className="mb-4 text-gray-700">
-        Deleting this page will remove all deployments, logs, and the cloned
-        repository from disk. This action cannot be undone.
+        Deleting this page will remove all deployments, logs, the cloned
+        repository from disk, and the associated systemd service. This action
+        cannot be undone.
       </p>
       <button
         onClick={handleDeletePage}
