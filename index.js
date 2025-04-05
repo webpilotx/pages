@@ -643,6 +643,26 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
   }
 });
 
+app.get("/pages/api/env-vars", async (req, res) => {
+  try {
+    const { pageId } = req.query;
+
+    if (!pageId) {
+      return res.status(400).json({ error: "Missing pageId parameter" });
+    }
+
+    const envVars = await db
+      .select()
+      .from(envsTable)
+      .where(eq(envsTable.pageId, pageId));
+
+    res.json(envVars);
+  } catch (error) {
+    console.error("Error fetching environment variables:", error);
+    res.status(500).json({ error: "Failed to fetch environment variables" });
+  }
+});
+
 if (!isMainThread) {
   console.error("This code should not run in the worker thread.");
 } else {

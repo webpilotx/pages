@@ -456,7 +456,15 @@ function PageDetailsLayout() {
       const response = await fetch(`/pages/api/pages-list`);
       const pages = await response.json();
       const page = pages.find((p) => p.id === parseInt(pageId));
-      setPageDetails(page);
+
+      if (page) {
+        // Fetch environment variables for the page
+        const envVarsResponse = await fetch(
+          `/pages/api/env-vars?pageId=${pageId}`
+        );
+        const envVars = await envVarsResponse.json();
+        setPageDetails({ ...page, envVars });
+      }
     } catch (error) {
       console.error("Error fetching page details:", error);
     }
