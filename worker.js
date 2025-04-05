@@ -128,7 +128,6 @@ After=network.target
 WorkingDirectory=${cloneDir}
 ExecStart=${nodeBinary} index.js
 Restart=always
-User=${process.env.USER}
 ${envVarsString}
 
 [Install]
