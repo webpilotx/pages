@@ -642,6 +642,7 @@ function EditDetails() {
 function DeploymentLogs() {
   const { pageDetails } = useOutletContext();
   const [deployments, setDeployments] = useState([]);
+  const { deploymentId } = useParams(); // Get deploymentId from the route
 
   const fetchDeployments = async () => {
     try {
@@ -658,6 +659,11 @@ function DeploymentLogs() {
   useEffect(() => {
     fetchDeployments();
   }, [pageDetails.id]);
+
+  // If deploymentId is present, render only the selected deployment's logs
+  if (deploymentId) {
+    return <Outlet />;
+  }
 
   return (
     <div>
@@ -685,7 +691,6 @@ function DeploymentLogs() {
           </li>
         ))}
       </ul>
-      <Outlet />
     </div>
   );
 }
