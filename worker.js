@@ -74,10 +74,13 @@ const execPromise = (command) =>
   let exitCode = 0;
 
   if (page.buildScript) {
-    // Use bash directly for the multi-line script
+    const bashrcPath = path.join(process.env.HOME, ".bashrc");
+    console.log(`Using .bashrc at: ${bashrcPath}`);
+
+    // Use bash directly for the multi-line script with full path to .bashrc
     const buildCommand = `
       cd ${cloneDir}
-      source ~/.bashrc
+      source ${bashrcPath}
       ${page.buildScript}
     `;
     const logStream = await fs.open(logFilePath, "a");
