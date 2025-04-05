@@ -75,38 +75,33 @@ const execPromise = (command) =>
   let exitCode = 0;
 
   if (page.buildScript) {
-    // Create a temporary directory for the build script
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "build-"));
-    const buildScriptPath = path.join(tempDir, "build.sh");
-    const buildScriptContent = `
-      #!/usr/bin/bash
+    const buildCommand = `
+      cd ${cloneDir}
       ${page.buildScript}
     `;
-    await fs.writeFile(buildScriptPath, buildScriptContent, { mode: 0o755 });
-
-    // Execute the .sh file using spawn
-    const buildCommand = spawn("bash", [buildScriptPath]);
     const logStream = await fs.open(logFilePath, "a");
 
-    buildCommand.stdout.on("data", (data) => {
-      logStream.write(data);
-    });
+    await new Promise((resolve, reject) => {
+      const childProcess = exec(buildCommand, { shell: true });
 
-    buildCommand.stderr.on("data", (data) => {
-      logStream.write(data);
-    });
+      childProcess.stdout.on("data", (data) => {
+        logStream.write(data);
+      });
 
-    await new Promise((resolve) => {
-      buildCommand.on("close", (code) => {
-        exitCode = code;
-        resolve();
+      childProcess.stderr.on("data", (data) => {
+        logStream.write(data);
+      });
+
+      childProcess.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Build script exited with code ${code}`));
+        }
       });
     });
 
     await logStream.close();
-
-    // Clean up the temporary directory
-    await fs.rm(tempDir, { recursive: true, force: true });
   }
 
   if (exitCode === 0) {
