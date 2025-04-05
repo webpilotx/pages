@@ -693,13 +693,31 @@ function DeploymentLogs() {
 function DeploymentLogDetails() {
   const { deploymentId } = useParams();
   const [logContent, setLogContent] = useState("");
+  const [deployment, setDeployment] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    let isMounted = true; // Track if the component is still mounted
+    let isMounted = true;
 
-    // Clear logContent when the component is first opened
-    setLogContent("");
+    // Fetch deployment details
+    const fetchDeployment = async () => {
+      try {
+        const response = await fetch(
+          `/pages/api/deployments?deploymentId=${deploymentId}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch deployment details");
+        }
+        const data = await response.json();
+        if (isMounted) {
+          setDeployment(data[0]); // Assuming the API returns an array
+        }
+      } catch (error) {
+        console.error("Error fetching deployment details:", error);
+      }
+    };
 
+    // Fetch logs
     const fetchLogStream = async () => {
       try {
         const response = await fetch(
@@ -729,16 +747,45 @@ function DeploymentLogDetails() {
       }
     };
 
+    fetchDeployment();
     fetchLogStream();
 
     return () => {
-      isMounted = false; // Mark as unmounted to stop processing
+      isMounted = false;
     };
-  }, [deploymentId]); // Use deploymentId as a dependency to reset when it changes
+  }, [deploymentId]);
+
+  if (!deployment) {
+    return (
+      <p className="text-center text-gray-500">Loading deployment details...</p>
+    );
+  }
 
   return (
-    <div className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
-      <pre>{logContent || "No logs available for this deployment."}</pre>
+    <div>
+      <button
+        onClick={() => navigate(`/pages/${deployment.pageId}/logs`)}
+        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+      >
+        Back to Logs
+      </button>
+      <div className="p-4 bg-gray-100 rounded-md shadow-sm border">
+        <p>
+          <strong>Start Time:</strong>{" "}
+          {new Date(deployment.createdAt).toLocaleString()}
+        </p>
+        <p>
+          <strong>Status:</strong>{" "}
+          {deployment.exitCode === null
+            ? "Running"
+            : deployment.exitCode === 0
+            ? "Success"
+            : "Failed"}
+        </p>
+      </div>
+      <div className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+        <pre>{logContent || "No logs available for this deployment."}</pre>
+      </div>
     </div>
   );
 }
