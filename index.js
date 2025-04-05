@@ -396,42 +396,6 @@ app.get("/pages/api/deployments", async (req, res) => {
   }
 });
 
-app.get("/pages/api/deployment-log", async (req, res) => {
-  try {
-    const { deploymentId } = req.query;
-
-    if (!deploymentId) {
-      return res.status(400).json({ error: "Missing deploymentId parameter" });
-    }
-
-    const logFilePath = path.join(
-      process.env.PAGES_DIR,
-      "deployments",
-      `${deploymentId}.log`
-    );
-
-    try {
-      // Check if the log file exists
-      await fsPromises.access(logFilePath);
-    } catch {
-      // If the log file doesn't exist yet, return an empty response
-      return res.status(200).send("");
-    }
-
-    // Stream the log file content
-    const logStream = fs.createReadStream(logFilePath, { encoding: "utf-8" });
-    logStream.pipe(res);
-
-    logStream.on("error", (error) => {
-      console.error("Error streaming log file:", error);
-      res.status(500).json({ error: "Failed to stream log file" });
-    });
-  } catch (error) {
-    console.error("Error fetching deployment log:", error);
-    res.status(500).json({ error: "Failed to fetch deployment log" });
-  }
-});
-
 app.get("/pages/api/deployment-log-stream", async (req, res) => {
   try {
     const { deploymentId } = req.query;
@@ -460,7 +424,7 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       try {
         const logs = await fsPromises.readFile(logFilePath, "utf-8");
         res.write("event: log\n");
-        res.write(`data: ${logs}\n\n`);
+        res.write(`data: ${JSON.stringify(logs)}\n\n`); // Ensure logs are JSON-safe
       } catch (error) {
         console.error("Error reading log file:", error);
         res.write("event: error\n");

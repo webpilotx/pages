@@ -696,7 +696,7 @@ function DeploymentLogDetails() {
 
   useEffect(() => {
     const eventSource = new EventSource(
-      `/pages/api/deployment-log?deploymentId=${deploymentId}`
+      `/pages/api/deployment-log-stream?deploymentId=${deploymentId}`
     );
 
     eventSource.onmessage = (event) => {
