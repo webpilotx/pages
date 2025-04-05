@@ -328,6 +328,17 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
           .set({ exitCode, completedAt: new Date().toISOString() })
           .where(eq(deploymentsTable.id, deployment.id));
         console.log(`Deployment ${deployment.id} updated successfully.`);
+
+        // Append "DEPLOYMENT COMPLETED" token to the log file
+        const logFilePath = path.join(
+          process.env.PAGES_DIR,
+          "deployments",
+          `${deployment.id}.log`
+        );
+        await fsPromises.appendFile(
+          logFilePath,
+          `\n===DEPLOYMENT COMPLETED===\n`
+        );
       } catch (error) {
         console.error(`Failed to update deployment ${deployment.id}:`, error);
       }
@@ -411,6 +422,17 @@ app.post("/pages/api/create-page", async (req, res) => {
           .set({ exitCode, completedAt: new Date().toISOString() })
           .where(eq(deploymentsTable.id, deployment.id));
         console.log(`Deployment ${deployment.id} updated successfully.`);
+
+        // Append "DEPLOYMENT COMPLETED" token to the log file
+        const logFilePath = path.join(
+          process.env.PAGES_DIR,
+          "deployments",
+          `${deployment.id}.log`
+        );
+        await fsPromises.appendFile(
+          logFilePath,
+          `\n===DEPLOYMENT COMPLETED===\n`
+        );
       } catch (error) {
         console.error(`Failed to update deployment ${deployment.id}:`, error);
       }
@@ -458,12 +480,12 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       `${deploymentId}.log`
     );
 
-    // Check if the deployment is already completed
+    // Check if the "DEPLOYMENT COMPLETED" token exists in the log file
     const logContent = await fsPromises.readFile(logFilePath, "utf-8");
-    if (logContent.includes("===BUILD SCRIPT COMPLETED===")) {
+    if (logContent.includes("===DEPLOYMENT COMPLETED===")) {
       console.log(`Deployment ${deploymentId} already completed.`);
       res.setHeader("Content-Type", "text/plain");
-      return res.send(logContent); // Send the entire log file content
+      return res.send(logContent); // Return the entire log file content
     }
 
     // Set headers for streaming
@@ -477,8 +499,8 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
         const newContent = await fsPromises.readFile(logFilePath, "utf-8");
         res.write(newContent); // Write new content to the response
 
-        // Check for the end token
-        if (newContent.includes("===BUILD SCRIPT COMPLETED===")) {
+        // Check for the "DEPLOYMENT COMPLETED" token
+        if (newContent.includes("===DEPLOYMENT COMPLETED===")) {
           console.log(`End token detected for deployment ${deploymentId}`);
           watcher.close(); // Stop watching the file
           res.end(); // Close the response stream

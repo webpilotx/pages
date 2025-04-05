@@ -715,30 +715,43 @@ function DeploymentLogs() {
 
 function DeploymentLogDetails() {
   const { id: pageId, deploymentId } = useParams();
+  const outletContext = useOutletContext(); // Get the outlet context
+  const setPageDetails = outletContext?.setPageDetails; // Safely access setPageDetails
   const [logContent, setLogContent] = useState("");
   const [deployment, setDeployment] = useState(null);
   const logContainerRef = useRef(null); // Reference for the log container
+
+  const fetchDeployment = async () => {
+    try {
+      const response = await fetch(
+        `/pages/${pageId}/deployments/${deploymentId}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch deployment details");
+      }
+      const data = await response.json();
+      setDeployment(data);
+    } catch (error) {
+      console.error("Error fetching deployment details:", error);
+    }
+  };
+
+  const fetchDeploymentsList = async () => {
+    if (!setPageDetails) return; // Skip if setPageDetails is not available
+    try {
+      const response = await fetch(`/pages/api/deployments?pageId=${pageId}`);
+      const data = await response.json();
+      setPageDetails((prev) => ({ ...prev, deployments: data }));
+    } catch (error) {
+      console.error("Error refreshing deployments list:", error);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
 
     // Fetch deployment details
-    const fetchDeployment = async () => {
-      try {
-        const response = await fetch(
-          `/pages/${pageId}/deployments/${deploymentId}`
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch deployment details");
-        }
-        const data = await response.json();
-        if (isMounted) {
-          setDeployment(data);
-        }
-      } catch (error) {
-        console.error("Error fetching deployment details:", error);
-      }
-    };
+    fetchDeployment();
 
     // Fetch logs
     const fetchLogStream = async () => {
@@ -762,6 +775,12 @@ function DeploymentLogDetails() {
             setLogContent((prev) => prev + decoder.decode(value));
           }
         }
+
+        // Refresh deployments list and current deployment after stream ends
+        if (isMounted) {
+          await fetchDeploymentsList();
+          await fetchDeployment();
+        }
       } catch (error) {
         if (isMounted) {
           console.error("Error streaming deployment logs:", error);
@@ -770,7 +789,6 @@ function DeploymentLogDetails() {
       }
     };
 
-    fetchDeployment();
     fetchLogStream();
 
     return () => {
