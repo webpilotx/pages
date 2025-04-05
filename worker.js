@@ -78,7 +78,6 @@ const execPromise = (command) =>
     const buildCommand = `
       cd ${cloneDir}
       source ~/.bashrc
-      pnpm install
       ${page.buildScript}
     `;
     const logStream = await fs.open(logFilePath, "a");
