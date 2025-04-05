@@ -1,6 +1,54 @@
 # Pages Deployment System
 
-This project is a deployment system for managing pages, repositories, and deployments. It includes a backend API and a frontend client for interacting with the system.
+This project is a deployment system for managing and deploying pages from GitHub repositories. Below is an explanation of the required environment variables and the rationale for using your own GitHub OAuth app.
+
+## Environment Variables
+
+The following environment variables are required for the system to function properly:
+
+### General Configuration
+
+- **`DB_FILE_NAME`**: The path to the SQLite database file used by the application.
+- **`PAGES_DIR`**: The directory where pages and deployments are stored.
+- **`PORT`**: The port on which the server will run (default: `3000`).
+
+### GitHub OAuth Configuration
+
+- **`VITE_GITHUB_CLIENT_ID`**: The client ID of your GitHub OAuth app.
+- **`GITHUB_CLIENT_SECRET`**: The client secret of your GitHub OAuth app.
+
+### Optional Variables
+
+- **`NODE_ENV`**: The environment in which the application is running (`development` or `production`).
+- **`VITE_TITLE`**: The title of the application (used in the frontend).
+
+## Why Use Your Own GitHub OAuth App?
+
+To protect your privacy, this system requires you to provide your own GitHub OAuth app credentials. By using your own OAuth app:
+
+1. **Data Privacy**: Your GitHub account and repositories remain private, as no third-party service has access to your credentials.
+2. **Control**: You have full control over the permissions and scope of the OAuth app.
+3. **Security**: You can revoke access or rotate credentials at any time without affecting other users.
+
+### How to Create a GitHub OAuth App
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers).
+2. Click on **"New OAuth App"**.
+3. Fill in the required fields:
+   - **Application name**: Choose a name for your app.
+   - **Homepage URL**: Set this to the URL where your app is hosted (e.g., `http://localhost:3000` for local development).
+   - **Authorization callback URL**: Set this to `http://<your-domain>/pages/api/github/callback` (replace `<your-domain>` with your actual domain or `localhost:3000` for local development).
+4. Click **"Register application"**.
+5. Copy the **Client ID** and **Client Secret** and set them as the values for `VITE_GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in your environment variables.
+
+## Getting Started
+
+1. Clone the repository.
+2. Install dependencies using `npm install`.
+3. Set up the required environment variables in a `.env` file.
+4. Start the server using `npm start`.
+
+For more details, refer to the source code and comments.
 
 ## Features
 
