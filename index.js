@@ -468,6 +468,13 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       try {
         const newContent = await fsPromises.readFile(logFilePath, "utf-8");
         res.write(newContent); // Write new content to the response
+
+        // Check for the end token
+        if (newContent.includes("===BUILD SCRIPT COMPLETED===")) {
+          console.log(`End token detected for deployment ${deploymentId}`);
+          watcher.close(); // Stop watching the file
+          res.end(); // Close the response stream
+        }
       } catch (error) {
         console.error(
           `Error reading updated content for deployment ${deploymentId}:`,

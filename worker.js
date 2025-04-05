@@ -100,6 +100,8 @@ const execPromise = (command) =>
           });
         });
 
+        // Write an end token to the log file
+        await logStream.write("\n===BUILD SCRIPT COMPLETED===\n");
         await logStream.close(); // Close the log file stream
       } catch (error) {
         console.error(`Error running build script: ${error.message}`);
