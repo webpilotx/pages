@@ -371,6 +371,7 @@ function CreatePage() {
                 <textarea
                   value={buildScript}
                   onChange={(e) => setBuildScript(e.target.value)}
+                  placeholder={`pnpm install\npnpm run build\npnpm run migrate`}
                   className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
                   rows="4"
                 ></textarea>
