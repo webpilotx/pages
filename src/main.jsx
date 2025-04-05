@@ -716,7 +716,6 @@ function DeploymentLogDetails() {
   const { id: pageId, deploymentId } = useParams();
   const [logContent, setLogContent] = useState("");
   const [deployment, setDeployment] = useState(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
@@ -785,12 +784,6 @@ function DeploymentLogDetails() {
 
   return (
     <div>
-      <button
-        onClick={() => navigate(`/pages/${pageId}/logs`)}
-        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-      >
-        Back to Logs
-      </button>
       <div className="p-4 bg-gray-100 rounded-md shadow-sm border">
         <p>
           <strong>Start Time:</strong>{" "}
