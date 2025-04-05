@@ -9,7 +9,7 @@ export NODE_ENV=production
 export PORT=5004
 
 # Define log file path
-LOG_FILE="~/production.log"
+LOG_FILE="production.log"
 
 # Kill any process using the specified port
 echo "Checking for processes using port $PORT..."
