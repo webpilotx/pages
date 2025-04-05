@@ -110,7 +110,7 @@ const execPromise = (command) =>
   }
 
   if (exitCode === 0) {
-    const serviceName = `webpilotx-pages-${page.name}.service`;
+    const serviceName = `webpilotx-${page.name}.service`; // Updated service name
     const nodeBinary = process.execPath;
     const envVarsString = envVars
       .map((env) => `Environment="${env.name}=${env.value}"`)

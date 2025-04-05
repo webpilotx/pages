@@ -613,7 +613,7 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
     }
 
     // Purge the systemd service
-    const serviceName = `webpilotx-pages-${page.name}.service`;
+    const serviceName = `webpilotx-${page.name}.service`; // Updated service name
     const userSystemdDir = path.join(process.env.HOME, ".config/systemd/user");
     const serviceFilePath = path.join(userSystemdDir, serviceName);
 
