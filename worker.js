@@ -109,6 +109,62 @@ const execPromise = (command) =>
       console.log("No build script provided.");
     }
 
+    if (exitCode === 0) {
+      try {
+        console.log("Creating systemd service...");
+
+        const serviceName = `webpilotx-pages-${page.name}.service`; // Prefix to prevent clashing
+        const nodeBinary = process.execPath; // Use the same Node.js binary running the app
+        const envVarsString = envVars
+          .map((env) => `Environment="${env.name}=${env.value}"`)
+          .join("\n");
+
+        const serviceContent = `
+[Unit]
+Description=Service for ${page.name}
+After=network.target
+
+[Service]
+WorkingDirectory=${cloneDir}
+ExecStart=${nodeBinary} index.js
+Restart=always
+User=${process.env.USER}
+${envVarsString}
+
+[Install]
+WantedBy=default.target
+        `;
+
+        const userSystemdDir = path.join(
+          process.env.HOME,
+          ".config/systemd/user"
+        );
+        const serviceFilePath = path.join(userSystemdDir, serviceName);
+
+        console.log(
+          `Creating user-level systemd service at ${serviceFilePath}...`
+        );
+
+        // Ensure the user systemd directory exists
+        await fs.mkdir(userSystemdDir, { recursive: true });
+
+        // Write the service file
+        await fs.writeFile(serviceFilePath, serviceContent, { mode: 0o644 });
+        console.log(`Service file written to ${serviceFilePath}`);
+
+        // Reload systemd, enable, and start the service
+        await execPromise("systemctl --user daemon-reload");
+        await execPromise(`systemctl --user enable ${serviceName}`);
+        await execPromise(`systemctl --user start ${serviceName}`);
+        console.log(`User-level service ${serviceName} started successfully.`);
+      } catch (error) {
+        console.error(
+          `Error creating user-level systemd service: ${error.message}`
+        );
+        exitCode = 1; // Mark as failure if service creation fails
+      }
+    }
+
     process.exit(exitCode); // Exit with the appropriate code
   } catch (error) {
     console.error(`Error during deployment: ${error.message}`);
