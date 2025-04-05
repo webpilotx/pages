@@ -697,6 +697,9 @@ function DeploymentLogDetails() {
   useEffect(() => {
     let isMounted = true; // Track if the component is still mounted
 
+    // Clear logContent when the component is first opened
+    setLogContent("");
+
     const fetchLogStream = async () => {
       try {
         const response = await fetch(
@@ -731,10 +734,13 @@ function DeploymentLogDetails() {
     return () => {
       isMounted = false; // Mark as unmounted to stop processing
     };
-  }, [deploymentId]);
+  }, [deploymentId]); // Use deploymentId as a dependency to reset when it changes
 
   return (
-    <div className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+    <div
+      key={deploymentId}
+      className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96"
+    >
       <pre>{logContent || "No logs available for this deployment."}</pre>
     </div>
   );
