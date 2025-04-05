@@ -51,6 +51,10 @@ const execPromise = (command) =>
     .from(envsTable)
     .where(eq(envsTable.pageId, pageId));
 
+  const envFileContent = envVars
+    .map((env) => `${env.name}=${env.value}`)
+    .join("\n");
+
   const cloneDir = path.join(process.env.PAGES_DIR, "pages", String(pageId));
   await fs.mkdir(cloneDir, { recursive: true });
 
@@ -61,15 +65,24 @@ const execPromise = (command) =>
 
   if (repoExists) {
     const pullCommand = `cd ${cloneDir} && git pull origin ${page.branch}`;
+    await fs.appendFile(
+      logFilePath,
+      `\n===GIT PULL===\nExecuting: ${pullCommand}\n`
+    );
     await execPromise(pullCommand);
   } else {
     const cloneCommand = `git clone --branch ${page.branch} https://github.com/${page.repo}.git ${cloneDir}`;
+    await fs.appendFile(
+      logFilePath,
+      `\n===GIT CLONE===\nExecuting: ${cloneCommand}\n`
+    );
     await execPromise(cloneCommand);
   }
 
-  const envFileContent = envVars
-    .map((env) => `${env.name}=${env.value}`)
-    .join("\n");
+  await fs.appendFile(
+    logFilePath,
+    `\n===WRITING ENV FILE===\nWriting .env file to ${cloneDir}\n`
+  );
   await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
 
   let exitCode = 0;
@@ -79,6 +92,10 @@ const execPromise = (command) =>
       cd ${cloneDir}
       ${page.buildScript}
     `;
+    await fs.appendFile(
+      logFilePath,
+      `\n===BUILD SCRIPT===\nExecuting: ${buildCommand}\n`
+    );
     const logStream = await fs.open(logFilePath, "a");
 
     await new Promise((resolve, reject) => {
@@ -129,11 +146,28 @@ WantedBy=default.target
     const userSystemdDir = path.join(process.env.HOME, ".config/systemd/user");
     const serviceFilePath = path.join(userSystemdDir, serviceName);
 
-    await fs.mkdir(userSystemdDir, { recursive: true });
+    await fs.appendFile(
+      logFilePath,
+      `\n===CREATING SYSTEMD SERVICE===\nService file path: ${serviceFilePath}\n`
+    );
     await fs.writeFile(serviceFilePath, serviceContent, { mode: 0o644 });
 
+    await fs.appendFile(
+      logFilePath,
+      `\n===SYSTEMD RELOAD===\nReloading systemd daemon\n`
+    );
     await execPromise("systemctl --user daemon-reload");
+
+    await fs.appendFile(
+      logFilePath,
+      `\n===SYSTEMD ENABLE===\nEnabling service: ${serviceName}\n`
+    );
     await execPromise(`systemctl --user enable ${serviceName}`);
+
+    await fs.appendFile(
+      logFilePath,
+      `\n===SYSTEMD START===\nStarting service: ${serviceName}\n`
+    );
     await execPromise(`systemctl --user start ${serviceName}`);
   }
 
