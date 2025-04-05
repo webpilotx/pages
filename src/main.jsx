@@ -506,6 +506,25 @@ function EditDetails() {
   const { pageDetails, setPageDetails, branches, loadingBranches } =
     useOutletContext();
 
+  const handleAddEnvVar = () => {
+    const updatedEnvVars = [
+      ...(pageDetails.envVars || []),
+      { name: "", value: "" },
+    ];
+    setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
+  };
+
+  const handleRemoveEnvVar = (index) => {
+    const updatedEnvVars = pageDetails.envVars.filter((_, i) => i !== index);
+    setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
+  };
+
+  const handleEnvVarChange = (index, field, value) => {
+    const updatedEnvVars = [...pageDetails.envVars];
+    updatedEnvVars[index][field] = value;
+    setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
+  };
+
   const handleSaveAndDeploy = async () => {
     try {
       const response = await fetch("/pages/api/save-and-deploy", {
@@ -568,6 +587,45 @@ function EditDetails() {
           className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
           rows="4"
         ></textarea>
+      </div>
+      <div className="mb-4">
+        <label className="block mb-2">Environment Variables</label>
+        {pageDetails.envVars?.map((env, index) => (
+          <div key={index} className="flex space-x-4 mb-2">
+            <input
+              type="text"
+              placeholder="Name"
+              value={env.name}
+              onChange={(e) =>
+                handleEnvVarChange(index, "name", e.target.value)
+              }
+              className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+            />
+            <input
+              type="text"
+              placeholder="Value"
+              value={env.value}
+              onChange={(e) =>
+                handleEnvVarChange(index, "value", e.target.value)
+              }
+              className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+            />
+            <button
+              onClick={() => handleRemoveEnvVar(index)}
+              type="button"
+              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={handleAddEnvVar}
+          type="button"
+          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+        >
+          Add Env
+        </button>
       </div>
       <button
         onClick={handleSaveAndDeploy}
