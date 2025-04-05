@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import "dotenv/config";
 import fs from "fs/promises";
 import path from "path";
@@ -6,6 +6,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { eq } from "drizzle-orm";
 import { workerData } from "worker_threads";
 import { envsTable, pagesTable } from "./schema.js";
+import os from "os";
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
@@ -74,29 +75,38 @@ const execPromise = (command) =>
   let exitCode = 0;
 
   if (page.buildScript) {
-    const bashrcPath = path.join(process.env.HOME, ".bashrc");
-    console.log(`Using .bashrc at: ${bashrcPath}`);
-
-    // Use bash directly for the multi-line script with full path to .bashrc
-    const buildCommand = `
-      cd ${cloneDir}
-      source ${bashrcPath}
+    // Create a temporary directory for the build script
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "build-"));
+    const buildScriptPath = path.join(tempDir, "build.sh");
+    const buildScriptContent = `
+      #!/usr/bin/bash
       ${page.buildScript}
     `;
-    const logStream = await fs.open(logFilePath, "a");
-    const childProcess = exec(buildCommand, { shell: "/usr/bin/bash" });
+    await fs.writeFile(buildScriptPath, buildScriptContent, { mode: 0o755 });
 
-    childProcess.stdout.pipe(logStream.createWriteStream());
-    childProcess.stderr.pipe(logStream.createWriteStream());
+    // Execute the .sh file using spawn
+    const buildCommand = spawn("/usr/bin/bash", [buildScriptPath]);
+    const logStream = await fs.open(logFilePath, "a");
+
+    buildCommand.stdout.on("data", (data) => {
+      logStream.write(data);
+    });
+
+    buildCommand.stderr.on("data", (data) => {
+      logStream.write(data);
+    });
 
     await new Promise((resolve) => {
-      childProcess.on("close", (code) => {
+      buildCommand.on("close", (code) => {
         exitCode = code;
         resolve();
       });
     });
 
     await logStream.close();
+
+    // Clean up the temporary directory
+    await fs.rm(tempDir, { recursive: true, force: true });
   }
 
   if (exitCode === 0) {
