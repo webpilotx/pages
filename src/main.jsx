@@ -640,8 +640,6 @@ function EditDetails() {
 function DeploymentLogs() {
   const { pageDetails } = useOutletContext();
   const [deployments, setDeployments] = useState([]);
-  const [selectedDeployment, setSelectedDeployment] = useState(null);
-  const [logContent, setLogContent] = useState("");
 
   const fetchDeployments = async () => {
     try {
@@ -655,7 +653,46 @@ function DeploymentLogs() {
     }
   };
 
-  const fetchDeploymentLog = async (deploymentId) => {
+  useEffect(() => {
+    fetchDeployments();
+  }, [pageDetails.id]);
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Deployment Logs</h2>
+      <ul className="space-y-2">
+        {deployments.map((deployment) => (
+          <li
+            key={deployment.id}
+            className="p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer hover:border-blue-500"
+          >
+            <Link to={`${deployment.id}`} className="block">
+              <p>
+                <strong>Start Time:</strong>{" "}
+                {new Date(deployment.createdAt).toLocaleString()}
+              </p>
+              <p>
+                <strong>Status:</strong>{" "}
+                {deployment.exitCode === null
+                  ? "Running"
+                  : deployment.exitCode === 0
+                  ? "Success"
+                  : "Failed"}
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Outlet />
+    </div>
+  );
+}
+
+function DeploymentLogDetails() {
+  const { deploymentId } = useParams();
+  const [logContent, setLogContent] = useState("");
+
+  const fetchDeploymentLog = async () => {
     try {
       const response = await fetch(
         `/pages/api/deployment-log?deploymentId=${deploymentId}`
@@ -672,46 +709,12 @@ function DeploymentLogs() {
   };
 
   useEffect(() => {
-    fetchDeployments();
-  }, [pageDetails.id]);
+    fetchDeploymentLog();
+  }, [deploymentId]);
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Deployment Logs</h2>
-      <ul className="space-y-2">
-        {deployments.map((deployment) => (
-          <li
-            key={deployment.id}
-            className={`p-4 bg-gray-100 rounded-md shadow-sm border cursor-pointer ${
-              selectedDeployment?.id === deployment.id
-                ? "border-blue-500"
-                : "border-gray-300"
-            }`}
-            onClick={() => {
-              setSelectedDeployment(deployment);
-              fetchDeploymentLog(deployment.id);
-            }}
-          >
-            <p>
-              <strong>Start Time:</strong>{" "}
-              {new Date(deployment.createdAt).toLocaleString()}
-            </p>
-            <p>
-              <strong>Status:</strong>{" "}
-              {deployment.exitCode === null
-                ? "Running"
-                : deployment.exitCode === 0
-                ? "Success"
-                : "Failed"}
-            </p>
-          </li>
-        ))}
-      </ul>
-      {selectedDeployment && (
-        <div className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
-          <pre>{logContent || "No logs available for this deployment."}</pre>
-        </div>
-      )}
+    <div className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+      <pre>{logContent || "No logs available for this deployment."}</pre>
     </div>
   );
 }
@@ -774,7 +777,12 @@ function App() {
             <Route path="/pages/new" element={<CreatePage />} />
             <Route path="/pages/:id" element={<PageDetailsLayout />}>
               <Route path="edit" element={<EditDetails />} />
-              <Route path="logs" element={<DeploymentLogs />} />
+              <Route path="logs" element={<DeploymentLogs />}>
+                <Route
+                  path=":deploymentId"
+                  element={<DeploymentLogDetails />}
+                />
+              </Route>
               <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>
