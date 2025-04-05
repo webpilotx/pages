@@ -80,12 +80,18 @@ const execPromise = (command) =>
     const buildScriptPath = path.join(tempDir, "build.sh");
     const buildScriptContent = `
       #!/usr/bin/bash
+      export PATH=$PATH:/usr/local/bin:/usr/bin:/bin:$(npm bin -g)
       ${page.buildScript}
     `;
     await fs.writeFile(buildScriptPath, buildScriptContent, { mode: 0o755 });
 
     // Execute the .sh file using spawn
-    const buildCommand = spawn("/usr/bin/bash", [buildScriptPath]);
+    const buildCommand = spawn("/usr/bin/bash", [buildScriptPath], {
+      env: {
+        ...process.env,
+        PATH: `${process.env.PATH}:/usr/local/bin:/usr/bin:/bin:$(npm bin -g)`,
+      },
+    });
     const logStream = await fs.open(logFilePath, "a");
 
     buildCommand.stdout.on("data", (data) => {
@@ -116,6 +122,8 @@ const execPromise = (command) =>
       .map((env) => `Environment="${env.name}=${env.value}"`)
       .join("\n");
 
+    // Explicitly set PATH in the systemd service file
+    const systemdPath = "/usr/local/bin:/usr/bin:/bin";
     const serviceContent = `
 [Unit]
 Description=Service for ${page.name}
@@ -125,6 +133,7 @@ After=network.target
 WorkingDirectory=${cloneDir}
 ExecStart=${nodeBinary} index.js
 Restart=always
+Environment="PATH=${systemdPath}"
 ${envVarsString}
 
 [Install]
