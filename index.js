@@ -289,7 +289,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
         await db.insert(envsTable).values({
           pageId: page.id,
           name: env.name,
-          value: env.value,
+          value: env.value.replace(/\n/g, "\\n"), // Escape multiline values
         });
       }
     } else {
@@ -395,7 +395,7 @@ app.post("/pages/api/create-page", async (req, res) => {
         await db.insert(envsTable).values({
           pageId: newPage.id,
           name: env.name,
-          value: env.value,
+          value: env.value.replace(/\n/g, "\\n"), // Escape multiline values
         });
       }
     }

@@ -213,7 +213,7 @@ function CreatePage() {
 
   const handleEnvVarChange = (index, field, value) => {
     const updatedEnvVars = [...envVars];
-    updatedEnvVars[index][field] = value;
+    updatedEnvVars[index][field] = value.replace(/\n/g, "\\n"); // Escape multiline values
     setEnvVars(updatedEnvVars);
   };
 
@@ -563,7 +563,7 @@ function EditDetails() {
 
   const handleEnvVarChange = (index, field, value) => {
     const updatedEnvVars = [...pageDetails.envVars];
-    updatedEnvVars[index][field] = value;
+    updatedEnvVars[index][field] = value.replace(/\n/g, "\\n"); // Escape multiline values
     setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
   };
 
