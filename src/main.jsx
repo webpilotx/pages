@@ -737,11 +737,12 @@ function DeploymentLogDetails() {
   };
 
   const fetchDeploymentsList = async () => {
-    if (!setPageDetails) return; // Skip if setPageDetails is not available
     try {
       const response = await fetch(`/pages/api/deployments?pageId=${pageId}`);
       const data = await response.json();
-      setPageDetails((prev) => ({ ...prev, deployments: data }));
+      if (setPageDetails) {
+        setPageDetails((prev) => ({ ...prev, deployments: data }));
+      }
     } catch (error) {
       console.error("Error refreshing deployments list:", error);
     }
@@ -778,7 +779,7 @@ function DeploymentLogDetails() {
 
         // Refresh deployments list and current deployment after stream ends
         if (isMounted) {
-          await fetchDeploymentsList();
+          await fetchDeploymentsList(); // Explicitly refresh deployments list
           await fetchDeployment();
         }
       } catch (error) {
