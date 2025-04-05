@@ -12,8 +12,23 @@ import {
 } from "react-router-dom";
 import "./index.css";
 
-function PagesList({ pagesList }) {
+function PagesList() {
+  const [pagesList, setPagesList] = useState([]);
   const navigate = useNavigate();
+
+  const fetchPagesList = async () => {
+    try {
+      const response = await fetch("/pages/api/pages-list");
+      const data = await response.json();
+      setPagesList(data);
+    } catch (error) {
+      console.error("Error fetching pages list:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPagesList();
+  }, []);
 
   const handlePageClick = (page) => {
     navigate(`/pages/${page.id}/edit`); // Navigate to /pages/:id/edit by default
@@ -682,22 +697,6 @@ function Settings() {
 }
 
 function App() {
-  const [pagesList, setPagesList] = useState([]);
-
-  const fetchPagesList = async () => {
-    try {
-      const response = await fetch("/pages/api/pages-list");
-      const data = await response.json();
-      setPagesList(data);
-    } catch (error) {
-      console.error("Error fetching pages list:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchPagesList();
-  }, []);
-
   return (
     <Router>
       <div className="min-h-screen flex flex-col bg-white text-black">
@@ -713,10 +712,7 @@ function App() {
         </nav>
         <main className="flex-grow container mx-auto px-4 py-8">
           <Routes>
-            <Route
-              path="/pages"
-              element={<PagesList pagesList={pagesList} />}
-            />
+            <Route path="/pages" element={<PagesList />} />
             <Route path="/pages/new" element={<CreatePage />} />
             <Route path="/pages/:id" element={<PageDetailsLayout />}>
               <Route path="edit" element={<EditDetails />} />
