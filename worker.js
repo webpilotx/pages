@@ -81,7 +81,7 @@ const execPromise = (command) =>
       ${page.buildScript}
     `;
     const logStream = await fs.open(logFilePath, "a");
-    const childProcess = exec(buildCommand, { shell: "bash" });
+    const childProcess = exec(buildCommand, { shell: "/usr/bin/bash" });
 
     childProcess.stdout.pipe(logStream.createWriteStream());
     childProcess.stderr.pipe(logStream.createWriteStream());

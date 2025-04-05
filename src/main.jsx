@@ -759,7 +759,7 @@ function DeploymentLogDetails() {
           const { value, done: readerDone } = await reader.read();
           done = readerDone;
           if (value) {
-            setLogContent((prev) => decoder.decode(value));
+            setLogContent(() => decoder.decode(value));
           }
         }
 
