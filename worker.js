@@ -85,12 +85,7 @@ const execPromise = (command) =>
     await fs.writeFile(buildScriptPath, buildScriptContent, { mode: 0o755 });
 
     // Execute the .sh file using spawn
-    const buildCommand = spawn("bash", [buildScriptPath], {
-      env: {
-        ...process.env,
-        PATH: `${process.env.PNPM_PATH}:${process.env.PATH}`,
-      },
-    });
+    const buildCommand = spawn("bash", [buildScriptPath]);
     const logStream = await fs.open(logFilePath, "a");
 
     buildCommand.stdout.on("data", (data) => {
