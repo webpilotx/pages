@@ -700,7 +700,7 @@ function DeploymentLogDetails() {
     );
 
     eventSource.onmessage = (event) => {
-      setLogContent(event.data);
+      setLogContent((prevContent) => prevContent + event.data + "\n"); // Append new logs
     };
 
     eventSource.onerror = (error) => {
