@@ -695,22 +695,34 @@ function DeploymentLogDetails() {
   const [logContent, setLogContent] = useState("");
 
   useEffect(() => {
-    const eventSource = new EventSource(
-      `/pages/api/deployment-log-stream?deploymentId=${deploymentId}`
-    );
+    const fetchLogStream = async () => {
+      try {
+        const response = await fetch(
+          `/pages/api/deployment-log-stream?deploymentId=${deploymentId}`
+        );
 
-    eventSource.onmessage = (event) => {
-      setLogContent((prevContent) => prevContent + event.data + "\n"); // Append new logs
+        if (!response.ok) {
+          throw new Error("Failed to fetch deployment logs");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        let done = false;
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          if (value) {
+            setLogContent((prev) => prev + decoder.decode(value));
+          }
+        }
+      } catch (error) {
+        console.error("Error streaming deployment logs:", error);
+        setLogContent("Failed to stream deployment logs.");
+      }
     };
 
-    eventSource.onerror = (error) => {
-      console.error("Error streaming deployment log:", error);
-      eventSource.close();
-    };
-
-    return () => {
-      eventSource.close();
-    };
+    fetchLogStream();
   }, [deploymentId]);
 
   return (

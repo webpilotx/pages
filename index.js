@@ -410,37 +410,25 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       `${deploymentId}.log`
     );
 
-    // Set headers for SSE
-    res.setHeader("Content-Type", "text/event-stream");
+    // Set headers for streaming
+    res.setHeader("Content-Type", "text/plain");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Send an initial event to establish the connection
-    res.write("event: connected\n");
-    res.write("data: Log streaming started\n\n");
+    // Stream the log file content
+    const stream = fs.createReadStream(logFilePath, { encoding: "utf-8" });
 
-    // Send the initial log content
-    try {
-      const initialLogs = await fsPromises.readFile(logFilePath, "utf-8");
-      res.write("event: log\n");
-      res.write(`data: ${JSON.stringify(initialLogs)}\n\n`);
-    } catch (error) {
-      console.error("Error reading initial log file:", error);
-      res.write("event: error\n");
-      res.write("data: Failed to read initial log file\n\n");
-    }
+    stream.on("data", (chunk) => {
+      res.write(chunk); // Write chunks of data to the response
+    });
 
-    // Watch the log file for changes and stream updates
-    const watcher = fs.watch(logFilePath, { encoding: "utf-8" }, async () => {
-      try {
-        const logs = await fsPromises.readFile(logFilePath, "utf-8");
-        res.write("event: log\n");
-        res.write(`data: ${JSON.stringify(logs)}\n\n`);
-      } catch (error) {
-        console.error("Error reading log file:", error);
-        res.write("event: error\n");
-        res.write("data: Failed to read log file\n\n");
-      }
+    stream.on("end", () => {
+      res.end(); // End the response when the stream ends
+    });
+
+    stream.on("error", (error) => {
+      console.error("Error reading log file:", error);
+      res.status(500).end("Failed to read log file");
     });
 
     // Handle client disconnect
@@ -448,12 +436,11 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       console.log(
         `Client disconnected from log stream for deployment ${deploymentId}`
       );
-      watcher.close();
-      res.end();
+      stream.destroy(); // Stop reading the file if the client disconnects
     });
   } catch (error) {
     console.error("Error streaming deployment log:", error);
-    res.status(500).json({ error: "Failed to stream deployment log" });
+    res.status(500).end("Failed to stream deployment log");
   }
 });
 
