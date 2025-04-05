@@ -75,6 +75,16 @@ const execPromise = (command) =>
     await execPromise(cloneCommand);
   }
 
+  const envFileContent = envVars
+    .map((env) => `${env.name}="${env.value}"`) // Encapsulate each value in double quotes
+    .join("\n");
+
+  await fs.appendFile(
+    logFilePath,
+    `\n===WRITING ENV FILE===\nWriting .env file to ${cloneDir}\n`
+  );
+  await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
+
   let exitCode = 0;
 
   if (page.buildScript) {
