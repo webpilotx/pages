@@ -282,13 +282,18 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       await db.delete(envsTable).where(eq(envsTable.pageId, editPage.id));
     }
 
-    // Save environment variables to envsTable
-    for (const env of envVars) {
-      await db.insert(envsTable).values({
-        pageId: page.id,
-        name: env.name,
-        value: env.value,
-      });
+    // Ensure envVars is an array before iterating
+    if (Array.isArray(envVars)) {
+      // Save environment variables to envsTable
+      for (const env of envVars) {
+        await db.insert(envsTable).values({
+          pageId: page.id,
+          name: env.name,
+          value: env.value,
+        });
+      }
+    } else {
+      console.warn("envVars is not an array. Skipping environment variables.");
     }
 
     // Insert a new deployment record
@@ -327,7 +332,10 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       }
     });
 
-    res.json({ message: "Page saved and deployment triggered successfully" });
+    res.json({
+      message: "Page saved and deployment triggered successfully",
+      deploymentId: deployment.id,
+    });
   } catch (error) {
     console.error("Error during save and deploy:", error);
     res
