@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import express from "express";
 import fs, { promises as fsPromises } from "fs"; // Import both fs and fs/promises
@@ -387,7 +387,7 @@ app.get("/pages/api/deployments", async (req, res) => {
       .select()
       .from(deploymentsTable)
       .where(eq(deploymentsTable.pageId, pageId))
-      .orderBy(deploymentsTable.createdAt);
+      .orderBy(desc(deploymentsTable.createdAt));
 
     res.json(deployments);
   } catch (error) {
