@@ -450,6 +450,34 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
   }
 });
 
+app.get("/pages/:pageId/deployments/:deploymentId", async (req, res) => {
+  try {
+    const { pageId, deploymentId } = req.params;
+
+    if (!pageId || !deploymentId) {
+      return res
+        .status(400)
+        .json({ error: "Missing pageId or deploymentId parameter" });
+    }
+
+    const deployment = await db
+      .select()
+      .from(deploymentsTable)
+      .where(eq(deploymentsTable.pageId, pageId))
+      .where(eq(deploymentsTable.id, deploymentId))
+      .limit(1);
+
+    if (deployment.length === 0) {
+      return res.status(404).json({ error: "Deployment not found" });
+    }
+
+    res.json(deployment[0]);
+  } catch (error) {
+    console.error("Error fetching deployment:", error);
+    res.status(500).json({ error: "Failed to fetch deployment" });
+  }
+});
+
 if (!isMainThread) {
   console.error("This code should not run in the worker thread.");
 } else {

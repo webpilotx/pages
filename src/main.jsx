@@ -691,7 +691,7 @@ function DeploymentLogs() {
 }
 
 function DeploymentLogDetails() {
-  const { deploymentId } = useParams();
+  const { id: pageId, deploymentId } = useParams();
   const [logContent, setLogContent] = useState("");
   const [deployment, setDeployment] = useState(null);
   const navigate = useNavigate();
@@ -703,14 +703,14 @@ function DeploymentLogDetails() {
     const fetchDeployment = async () => {
       try {
         const response = await fetch(
-          `/pages/api/deployments?deploymentId=${deploymentId}`
+          `/pages/${pageId}/deployments/${deploymentId}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch deployment details");
         }
         const data = await response.json();
         if (isMounted) {
-          setDeployment(data[0]); // Assuming the API returns an array
+          setDeployment(data);
         }
       } catch (error) {
         console.error("Error fetching deployment details:", error);
@@ -753,7 +753,7 @@ function DeploymentLogDetails() {
     return () => {
       isMounted = false;
     };
-  }, [deploymentId]);
+  }, [pageId, deploymentId]);
 
   if (!deployment) {
     return (
@@ -764,7 +764,7 @@ function DeploymentLogDetails() {
   return (
     <div>
       <button
-        onClick={() => navigate(`/pages/${deployment.pageId}/logs`)}
+        onClick={() => navigate(`/pages/${pageId}/logs`)}
         className="mb-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
       >
         Back to Logs
