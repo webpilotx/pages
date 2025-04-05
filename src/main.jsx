@@ -715,8 +715,6 @@ function DeploymentLogs() {
 
 function DeploymentLogDetails() {
   const { id: pageId, deploymentId } = useParams();
-  const outletContext = useOutletContext(); // Get the outlet context
-  const setPageDetails = outletContext?.setPageDetails; // Safely access setPageDetails
   const [logContent, setLogContent] = useState("");
   const [deployment, setDeployment] = useState(null);
   const logContainerRef = useRef(null); // Reference for the log container
@@ -733,18 +731,6 @@ function DeploymentLogDetails() {
       setDeployment(data);
     } catch (error) {
       console.error("Error fetching deployment details:", error);
-    }
-  };
-
-  const fetchDeploymentsList = async () => {
-    try {
-      const response = await fetch(`/pages/api/deployments?pageId=${pageId}`);
-      const data = await response.json();
-      if (setPageDetails) {
-        setPageDetails((prev) => ({ ...prev, deployments: data }));
-      }
-    } catch (error) {
-      console.error("Error refreshing deployments list:", error);
     }
   };
 
@@ -777,9 +763,8 @@ function DeploymentLogDetails() {
           }
         }
 
-        // Refresh deployments list and current deployment after stream ends
+        // Refresh current deployment after stream ends
         if (isMounted) {
-          await fetchDeploymentsList(); // Explicitly refresh deployments list
           await fetchDeployment();
         }
       } catch (error) {
