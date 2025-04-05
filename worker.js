@@ -21,105 +21,84 @@ const execPromise = (command) =>
   });
 
 (async () => {
-  try {
-    const { pageId, deploymentId } = workerData;
+  const { pageId, deploymentId } = workerData;
 
-    console.log(
-      `Worker started for page ID: ${pageId}, deployment ID: ${deploymentId}`
+  console.log(
+    `Worker started for page ID: ${pageId}, deployment ID: ${deploymentId}`
+  );
+
+  const logFilePath = path.join(
+    process.env.PAGES_DIR,
+    "deployments",
+    `${deploymentId}.log`
+  );
+
+  const [page] = await db
+    .select()
+    .from(pagesTable)
+    .where(eq(pagesTable.id, pageId));
+  if (!page) {
+    await fs.appendFile(
+      logFilePath,
+      `\n===DEPLOYMENT ERROR===\nPage with ID ${pageId} not found\n`
     );
+    process.exit(1);
+  }
 
-    // Fetch page details
-    const [page] = await db
-      .select()
-      .from(pagesTable)
-      .where(eq(pagesTable.id, pageId));
-    if (!page) {
-      throw new Error(`Page with ID ${pageId} not found`);
-    }
-    console.log(`Fetched page details: ${JSON.stringify(page, null, 2)}`);
+  const envVars = await db
+    .select()
+    .from(envsTable)
+    .where(eq(envsTable.pageId, pageId));
 
-    // Fetch environment variables
-    const envVars = await db
-      .select()
-      .from(envsTable)
-      .where(eq(envsTable.pageId, pageId));
-    console.log(
-      `Fetched environment variables: ${JSON.stringify(envVars, null, 2)}`
-    );
+  const cloneDir = path.join(process.env.PAGES_DIR, "pages", String(pageId));
+  await fs.mkdir(cloneDir, { recursive: true });
 
-    // Determine the repository directory
-    const cloneDir = path.join(process.env.PAGES_DIR, "pages", String(pageId));
-    console.log(`Repository directory: ${cloneDir}`);
-    await fs.mkdir(cloneDir, { recursive: true });
+  const repoExists = await fs
+    .access(path.join(cloneDir, ".git"))
+    .then(() => true)
+    .catch(() => false);
 
-    // Check if the repository already exists
-    const repoExists = await fs
-      .access(path.join(cloneDir, ".git"))
-      .then(() => true)
-      .catch(() => false);
+  if (repoExists) {
+    const pullCommand = `cd ${cloneDir} && git pull origin ${page.branch}`;
+    await execPromise(pullCommand);
+  } else {
+    const cloneCommand = `git clone --branch ${page.branch} https://github.com/${page.repo}.git ${cloneDir}`;
+    await execPromise(cloneCommand);
+  }
 
-    if (repoExists) {
-      console.log(`Repository exists. Pulling latest changes.`);
-      const pullCommand = `cd ${cloneDir} && git pull origin ${page.branch}`;
-      await execPromise(pullCommand);
-    } else {
-      console.log(`Repository does not exist. Cloning repository.`);
-      const cloneCommand = `git clone --branch ${page.branch} https://github.com/${page.repo}.git ${cloneDir}`;
-      await execPromise(cloneCommand);
-    }
+  const envFileContent = envVars
+    .map((env) => `${env.name}=${env.value}`)
+    .join("\n");
+  await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
 
-    // Dump environment variables to .env file
-    console.log(`Writing environment variables to .env file.`);
-    const envFileContent = envVars
-      .map((env) => `${env.name}=${env.value}`)
+  let exitCode = 0;
+
+  if (page.buildScript) {
+    const buildCommand = `cd ${cloneDir} && ${page.buildScript}`;
+    const logStream = await fs.open(logFilePath, "a");
+    const childProcess = exec(buildCommand, { shell: true });
+
+    childProcess.stdout.pipe(logStream.createWriteStream());
+    childProcess.stderr.pipe(logStream.createWriteStream());
+
+    await new Promise((resolve) => {
+      childProcess.on("close", (code) => {
+        exitCode = code;
+        resolve();
+      });
+    });
+
+    await logStream.close();
+  }
+
+  if (exitCode === 0) {
+    const serviceName = `webpilotx-pages-${page.name}.service`;
+    const nodeBinary = process.execPath;
+    const envVarsString = envVars
+      .map((env) => `Environment="${env.name}=${env.value}"`)
       .join("\n");
-    await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
 
-    let exitCode = 0;
-
-    if (page.buildScript) {
-      console.log(`Running build script: ${page.buildScript}`);
-      const buildCommand = `cd ${cloneDir} && ${page.buildScript}`;
-      const logDir = path.join(process.env.PAGES_DIR, "deployments");
-      const logFilePath = path.join(logDir, `${deploymentId}.log`);
-
-      try {
-        const logStream = await fs.open(logFilePath, "a"); // Open log file in append mode
-        const childProcess = exec(buildCommand, { shell: true });
-
-        childProcess.stdout.pipe(logStream.createWriteStream());
-        childProcess.stderr.pipe(logStream.createWriteStream());
-
-        await new Promise((resolve, reject) => {
-          childProcess.on("close", (code) => {
-            exitCode = code;
-            resolve();
-          });
-          childProcess.on("error", (error) => {
-            reject(error);
-          });
-        });
-
-        await logStream.close(); // Close the log file stream
-      } catch (error) {
-        console.error(`Error running build script: ${error.message}`);
-        exitCode = 1; // Non-zero exit code indicates failure
-      }
-    } else {
-      console.log("No build script provided.");
-    }
-
-    if (exitCode === 0) {
-      try {
-        console.log("Creating systemd service...");
-
-        const serviceName = `webpilotx-pages-${page.name}.service`; // Prefix to prevent clashing
-        const nodeBinary = process.execPath; // Use the same Node.js binary running the app
-        const envVarsString = envVars
-          .map((env) => `Environment="${env.name}=${env.value}"`)
-          .join("\n");
-
-        const serviceContent = `
+    const serviceContent = `
 [Unit]
 Description=Service for ${page.name}
 After=network.target
@@ -132,41 +111,19 @@ ${envVarsString}
 
 [Install]
 WantedBy=default.target
-        `;
+    `;
 
-        const userSystemdDir = path.join(
-          process.env.HOME,
-          ".config/systemd/user"
-        );
-        const serviceFilePath = path.join(userSystemdDir, serviceName);
+    const userSystemdDir = path.join(process.env.HOME, ".config/systemd/user");
+    const serviceFilePath = path.join(userSystemdDir, serviceName);
 
-        console.log(
-          `Creating user-level systemd service at ${serviceFilePath}...`
-        );
+    await fs.mkdir(userSystemdDir, { recursive: true });
+    await fs.writeFile(serviceFilePath, serviceContent, { mode: 0o644 });
 
-        // Ensure the user systemd directory exists
-        await fs.mkdir(userSystemdDir, { recursive: true });
-
-        // Write the service file
-        await fs.writeFile(serviceFilePath, serviceContent, { mode: 0o644 });
-        console.log(`Service file written to ${serviceFilePath}`);
-
-        // Reload systemd, enable, and start the service
-        await execPromise("systemctl --user daemon-reload");
-        await execPromise(`systemctl --user enable ${serviceName}`);
-        await execPromise(`systemctl --user start ${serviceName}`);
-        console.log(`User-level service ${serviceName} started successfully.`);
-      } catch (error) {
-        console.error(
-          `Error creating user-level systemd service: ${error.message}`
-        );
-        exitCode = 1; // Mark as failure if service creation fails
-      }
-    }
-
-    process.exit(exitCode); // Exit with the appropriate code
-  } catch (error) {
-    console.error(`Error during deployment: ${error.message}`);
-    process.exit(1); // Exit with failure code
+    await execPromise("systemctl --user daemon-reload");
+    await execPromise(`systemctl --user enable ${serviceName}`);
+    await execPromise(`systemctl --user start ${serviceName}`);
   }
+
+  await fs.appendFile(logFilePath, `\n===DEPLOYMENT COMPLETED===\n`);
+  process.exit(exitCode);
 })();

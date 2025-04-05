@@ -315,8 +315,17 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       workerData: { pageId: page.id, deploymentId: deployment.id },
     });
 
-    worker.on("error", (error) => {
+    worker.on("error", async (error) => {
       console.error(`Worker error: ${error.message}`);
+      const logFilePath = path.join(
+        process.env.PAGES_DIR,
+        "deployments",
+        `${deployment.id}.log`
+      );
+      await fsPromises.appendFile(
+        logFilePath,
+        `\n===DEPLOYMENT ERROR===\n${error.message}\n`
+      );
     });
 
     worker.on("exit", async (code) => {
@@ -409,8 +418,17 @@ app.post("/pages/api/create-page", async (req, res) => {
       workerData: { pageId: newPage.id, deploymentId: deployment.id },
     });
 
-    worker.on("error", (error) => {
+    worker.on("error", async (error) => {
       console.error(`Worker error: ${error.message}`);
+      const logFilePath = path.join(
+        process.env.PAGES_DIR,
+        "deployments",
+        `${deployment.id}.log`
+      );
+      await fsPromises.appendFile(
+        logFilePath,
+        `\n===DEPLOYMENT ERROR===\n${error.message}\n`
+      );
     });
 
     worker.on("exit", async (code) => {
