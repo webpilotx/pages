@@ -74,10 +74,15 @@ const execPromise = (command) =>
   let exitCode = 0;
 
   if (page.buildScript) {
-    // Use bash explicitly to ensure source works
-    const buildCommand = `cd ${cloneDir} && bash -c "source ~/.bashrc && ${page.buildScript}"`;
+    // Use bash directly for the multi-line script
+    const buildCommand = `
+      cd ${cloneDir}
+      source ~/.bashrc
+      pnpm install
+      ${page.buildScript}
+    `;
     const logStream = await fs.open(logFilePath, "a");
-    const childProcess = exec(buildCommand, { shell: true });
+    const childProcess = exec(buildCommand, { shell: "bash" });
 
     childProcess.stdout.pipe(logStream.createWriteStream());
     childProcess.stderr.pipe(logStream.createWriteStream());
