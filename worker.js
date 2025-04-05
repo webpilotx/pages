@@ -52,7 +52,7 @@ const execPromise = (command) =>
     .where(eq(envsTable.pageId, pageId));
 
   const envFileContent = envVars
-    .map((env) => `${env.name}="${env.value.replace(/"/g, '\\"')}"`) // Encapsulate in double quotes and escape existing quotes
+    .map((env) => `${env.name}="${env.value}"`) // Encapsulate each value in double quotes
     .join("\n");
 
   const cloneDir = path.join(process.env.PAGES_DIR, "pages", String(pageId));

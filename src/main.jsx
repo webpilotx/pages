@@ -213,7 +213,7 @@ function CreatePage() {
 
   const handleEnvVarChange = (index, field, value) => {
     const updatedEnvVars = [...envVars];
-    updatedEnvVars[index][field] = `"${value.replace(/"/g, '\\"')}"`; // Encapsulate in double quotes and escape existing quotes
+    updatedEnvVars[index][field] = value; // Store the value as-is
     setEnvVars(updatedEnvVars);
   };
 
@@ -563,7 +563,7 @@ function EditDetails() {
 
   const handleEnvVarChangeEdit = (index, field, value) => {
     const updatedEnvVars = [...pageDetails.envVars];
-    updatedEnvVars[index][field] = `"${value.replace(/"/g, '\\"')}"`; // Encapsulate in double quotes and escape existing quotes
+    updatedEnvVars[index][field] = value; // Store the value as-is
     setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
   };
 
