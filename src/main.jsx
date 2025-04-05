@@ -505,6 +505,7 @@ function PageDetailsLayout() {
 function EditDetails() {
   const { pageDetails, setPageDetails, branches, loadingBranches } =
     useOutletContext();
+  const navigate = useNavigate();
 
   const handleAddEnvVar = () => {
     const updatedEnvVars = [
@@ -544,7 +545,8 @@ function EditDetails() {
         throw new Error("Failed to save and deploy");
       }
 
-      alert("Page saved and deployment triggered successfully.");
+      const data = await response.json();
+      navigate(`/pages/${pageDetails.id}/logs/${data.deploymentId}`);
     } catch (error) {
       console.error("Error saving and deploying:", error);
       alert("Failed to save and deploy.");
