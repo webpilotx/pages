@@ -12,11 +12,10 @@ import {
 } from "react-router-dom";
 import "./index.css";
 
-function PagesList({ pagesList, handleSelectPage }) {
+function PagesList({ pagesList }) {
   const navigate = useNavigate();
 
   const handlePageClick = (page) => {
-    handleSelectPage(page);
     navigate(`/pages/${page.id}/edit`); // Navigate to /pages/:id/edit by default
   };
 
@@ -716,9 +715,7 @@ function App() {
           <Routes>
             <Route
               path="/pages"
-              element={
-                <PagesList pagesList={pagesList} handleSelectPage={() => {}} />
-              }
+              element={<PagesList pagesList={pagesList} />}
             />
             <Route path="/pages/new" element={<CreatePage />} />
             <Route path="/pages/:id" element={<PageDetailsLayout />}>
