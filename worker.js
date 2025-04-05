@@ -156,9 +156,9 @@ WantedBy=default.target
 
     await fs.appendFile(
       logFilePath,
-      `\n===SYSTEMD START===\nStarting service: ${serviceName}\n`
+      `\n===SYSTEMD RESTART===\nRestarting service: ${serviceName}\n`
     );
-    await execPromise(`systemctl --user start ${serviceName}`);
+    await execPromise(`systemctl --user restart ${serviceName}`);
   }
 
   process.exit(exitCode);
