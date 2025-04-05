@@ -737,10 +737,7 @@ function DeploymentLogDetails() {
   }, [deploymentId]); // Use deploymentId as a dependency to reset when it changes
 
   return (
-    <div
-      key={deploymentId}
-      className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96"
-    >
+    <div className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
       <pre>{logContent || "No logs available for this deployment."}</pre>
     </div>
   );
