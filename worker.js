@@ -124,6 +124,5 @@ WantedBy=default.target
     await execPromise(`systemctl --user start ${serviceName}`);
   }
 
-  await fs.appendFile(logFilePath, `\n===DEPLOYMENT COMPLETED===\n`);
   process.exit(exitCode);
 })();
