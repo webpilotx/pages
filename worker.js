@@ -75,7 +75,7 @@ const execPromise = (command) =>
 
   if (page.buildScript) {
     // Use bash explicitly to ensure source works
-    const buildCommand = `cd ${cloneDir} && bash -c "source ~/.bashrc && ${page.buildScript}"`;
+    const buildCommand = `cd ${cloneDir} && bash -c "source ~/.bashrc && [ -f ~/.bash_profile ] && source ~/.bash_profile && export PATH=$PATH && ${page.buildScript}"`;
     const logStream = await fs.open(logFilePath, "a");
     const childProcess = exec(buildCommand, { shell: true });
 
