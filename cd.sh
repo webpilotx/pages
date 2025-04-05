@@ -13,10 +13,10 @@ LOG_FILE="production.log"
 
 # Kill any process using the specified port
 echo "Checking for processes using port $PORT..."
-PID=$(lsof -t -i:$PORT)
-if [ -n "$PID" ]; then
-  echo "Killing process $PID using port $PORT..."
-  kill -9 $PID
+PIDS=$(lsof -t -i:$PORT)
+if [ -n "$PIDS" ]; then
+  echo "Killing processes using port $PORT..."
+  echo "$PIDS" | xargs kill -9
 else
   echo "No process found using port $PORT."
 fi
