@@ -499,10 +499,20 @@ function PageDetailsLayout() {
 
   return (
     <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
-      {/* Display page name and full repository name */}
+      {/* Display page name and full repository name with external link */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold">{pageDetails.name}</h1>
-        <p className="text-gray-600">{pageDetails.repo}</p>
+        <p className="text-gray-600">
+          {pageDetails.repo}{" "}
+          <a
+            href={`https://github.com/${pageDetails.repo}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:underline"
+          >
+            (View on GitHub)
+          </a>
+        </p>
       </div>
       <nav className="mb-4">
         <div className="flex space-x-4 border-b border-gray-300">
