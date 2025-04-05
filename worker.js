@@ -48,7 +48,7 @@ const execPromise = (command) =>
     );
 
     // Determine the repository directory
-    const cloneDir = path.join(process.env.PAGES_DIR, String(pageId));
+    const cloneDir = path.join(process.env.PAGES_DIR, "pages", String(pageId));
     console.log(`Repository directory: ${cloneDir}`);
     await fs.mkdir(cloneDir, { recursive: true });
 
