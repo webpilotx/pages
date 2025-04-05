@@ -499,6 +499,11 @@ function PageDetailsLayout() {
 
   return (
     <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
+      {/* Display page name and full repository name */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">{pageDetails.name}</h1>
+        <p className="text-gray-600">{pageDetails.repo}</p>
+      </div>
       <nav className="mb-4">
         <div className="flex space-x-4 border-b border-gray-300">
           <Link
