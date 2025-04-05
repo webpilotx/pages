@@ -695,6 +695,8 @@ function DeploymentLogDetails() {
   const [logContent, setLogContent] = useState("");
 
   useEffect(() => {
+    let isMounted = true; // Track if the component is still mounted
+
     const fetchLogStream = async () => {
       try {
         const response = await fetch(
@@ -709,7 +711,7 @@ function DeploymentLogDetails() {
         const decoder = new TextDecoder("utf-8");
 
         let done = false;
-        while (!done) {
+        while (!done && isMounted) {
           const { value, done: readerDone } = await reader.read();
           done = readerDone;
           if (value) {
@@ -717,12 +719,18 @@ function DeploymentLogDetails() {
           }
         }
       } catch (error) {
-        console.error("Error streaming deployment logs:", error);
-        setLogContent("Failed to stream deployment logs.");
+        if (isMounted) {
+          console.error("Error streaming deployment logs:", error);
+          setLogContent("Failed to stream deployment logs.");
+        }
       }
     };
 
     fetchLogStream();
+
+    return () => {
+      isMounted = false; // Mark as unmounted to stop processing
+    };
   }, [deploymentId]);
 
   return (

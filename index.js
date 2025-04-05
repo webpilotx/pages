@@ -427,8 +427,11 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
     });
 
     stream.on("error", (error) => {
-      console.error("Error reading log file:", error);
-      res.status(500).end("Failed to read log file");
+      console.error(
+        `Error reading log file for deployment ${deploymentId}:`,
+        error
+      );
+      res.end("Failed to read log file");
     });
 
     // Handle client disconnect
@@ -439,7 +442,10 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       stream.destroy(); // Stop reading the file if the client disconnects
     });
   } catch (error) {
-    console.error("Error streaming deployment log:", error);
+    console.error(
+      `Error streaming deployment log for deployment ${deploymentId}:`,
+      error
+    );
     res.status(500).end("Failed to stream deployment log");
   }
 });
