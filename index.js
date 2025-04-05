@@ -458,6 +458,14 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       `${deploymentId}.log`
     );
 
+    // Check if the deployment is already completed
+    const logContent = await fsPromises.readFile(logFilePath, "utf-8");
+    if (logContent.includes("===BUILD SCRIPT COMPLETED===")) {
+      console.log(`Deployment ${deploymentId} already completed.`);
+      res.setHeader("Content-Type", "text/plain");
+      return res.send(logContent); // Send the entire log file content
+    }
+
     // Set headers for streaming
     res.setHeader("Content-Type", "text/plain");
     res.setHeader("Cache-Control", "no-cache");
