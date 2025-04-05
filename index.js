@@ -463,21 +463,6 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Watch the log file for changes and stream updates
-    const stream = fs.createReadStream(logFilePath, { encoding: "utf-8" });
-
-    stream.on("data", (chunk) => {
-      res.write(chunk); // Write chunks of data to the response
-    });
-
-    stream.on("error", (error) => {
-      console.error(
-        `Error reading log file for deployment ${deploymentId}:`,
-        error
-      );
-      res.end("Failed to read log file");
-    });
-
     // Watch for new content in the log file
     const watcher = fs.watch(logFilePath, { encoding: "utf-8" }, async () => {
       try {
@@ -496,7 +481,6 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       console.log(
         `Client disconnected from log stream for deployment ${deploymentId}`
       );
-      stream.destroy(); // Stop reading the file
       watcher.close(); // Stop watching the file
     });
   } catch (error) {
