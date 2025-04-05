@@ -213,7 +213,7 @@ function CreatePage() {
 
   const handleEnvVarChange = (index, field, value) => {
     const updatedEnvVars = [...envVars];
-    updatedEnvVars[index][field] = value.replace(/\n/g, "\\n"); // Escape multiline values
+    updatedEnvVars[index][field] = `"${value.replace(/"/g, '\\"')}"`; // Encapsulate in double quotes and escape existing quotes
     setEnvVars(updatedEnvVars);
   };
 
@@ -561,9 +561,9 @@ function EditDetails() {
     setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
   };
 
-  const handleEnvVarChange = (index, field, value) => {
+  const handleEnvVarChangeEdit = (index, field, value) => {
     const updatedEnvVars = [...pageDetails.envVars];
-    updatedEnvVars[index][field] = value.replace(/\n/g, "\\n"); // Escape multiline values
+    updatedEnvVars[index][field] = `"${value.replace(/"/g, '\\"')}"`; // Encapsulate in double quotes and escape existing quotes
     setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
   };
 
@@ -640,7 +640,7 @@ function EditDetails() {
               placeholder="Name"
               value={env.name}
               onChange={(e) =>
-                handleEnvVarChange(index, "name", e.target.value)
+                handleEnvVarChangeEdit(index, "name", e.target.value)
               }
               className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
             />
@@ -649,7 +649,7 @@ function EditDetails() {
               placeholder="Value"
               value={env.value}
               onChange={(e) =>
-                handleEnvVarChange(index, "value", e.target.value)
+                handleEnvVarChangeEdit(index, "value", e.target.value)
               }
               className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
             />
