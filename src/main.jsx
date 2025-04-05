@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Link,
@@ -676,7 +676,7 @@ function DeploymentLogs() {
 
   useEffect(() => {
     fetchDeployments();
-  }, [pageDetails.id]);
+  }, []); // Refetch deployments whenever the component is rendered
 
   // If deploymentId is present, render only the selected deployment's logs
   if (deploymentId) {
@@ -717,6 +717,7 @@ function DeploymentLogDetails() {
   const { id: pageId, deploymentId } = useParams();
   const [logContent, setLogContent] = useState("");
   const [deployment, setDeployment] = useState(null);
+  const logContainerRef = useRef(null); // Reference for the log container
 
   useEffect(() => {
     let isMounted = true;
@@ -777,6 +778,13 @@ function DeploymentLogDetails() {
     };
   }, [pageId, deploymentId]);
 
+  useEffect(() => {
+    // Auto-scroll to the bottom of the log container
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [logContent]);
+
   if (!deployment) {
     return (
       <p className="text-center text-gray-500">Loading deployment details...</p>
@@ -799,7 +807,10 @@ function DeploymentLogDetails() {
             : "Failed"}
         </p>
       </div>
-      <div className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96">
+      <div
+        ref={logContainerRef} // Attach the reference to the log container
+        className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96"
+      >
         <pre>{logContent || "No logs available for this deployment."}</pre>
       </div>
     </div>
