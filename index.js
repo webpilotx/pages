@@ -347,7 +347,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
 
 app.post("/pages/api/create-page", async (req, res) => {
   try {
-    const { repo, name, branch } = req.body;
+    const { repo, name, branch, buildScript, envVars } = req.body;
 
     if (!repo || !name || !branch) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -360,6 +360,7 @@ app.post("/pages/api/create-page", async (req, res) => {
         repo,
         name,
         branch,
+        buildScript: buildScript || null,
       })
       .returning({
         id: pagesTable.id,
@@ -368,7 +369,54 @@ app.post("/pages/api/create-page", async (req, res) => {
         branch: pagesTable.branch,
       });
 
-    res.status(201).json(newPage);
+    // Save environment variables if provided
+    if (Array.isArray(envVars)) {
+      for (const env of envVars) {
+        await db.insert(envsTable).values({
+          pageId: newPage.id,
+          name: env.name,
+          value: env.value,
+        });
+      }
+    }
+
+    // Create a new deployment for the page
+    const [deployment] = await db
+      .insert(deploymentsTable)
+      .values({ pageId: newPage.id })
+      .returning({ id: deploymentsTable.id });
+
+    // Initialize the log file with an initial text
+    const logDir = path.join(process.env.PAGES_DIR, "deployments");
+    await fsPromises.mkdir(logDir, { recursive: true });
+    const logFilePath = path.join(logDir, `${deployment.id}.log`);
+    const initialLogText = "Deployment initialized. Logs will appear here.\n";
+    await fsPromises.writeFile(logFilePath, initialLogText);
+
+    // Trigger the build worker using a worker thread
+    const worker = new Worker(path.join(__dirname, "worker.js"), {
+      workerData: { pageId: newPage.id, deploymentId: deployment.id },
+    });
+
+    worker.on("error", (error) => {
+      console.error(`Worker error: ${error.message}`);
+    });
+
+    worker.on("exit", async (code) => {
+      console.log(`Worker exited with code ${code}`);
+      const exitCode = code === 0 ? 0 : 1;
+      try {
+        await db
+          .update(deploymentsTable)
+          .set({ exitCode, completedAt: new Date().toISOString() })
+          .where(eq(deploymentsTable.id, deployment.id));
+        console.log(`Deployment ${deployment.id} updated successfully.`);
+      } catch (error) {
+        console.error(`Failed to update deployment ${deployment.id}:`, error);
+      }
+    });
+
+    res.status(201).json({ pageId: newPage.id, deploymentId: deployment.id });
   } catch (error) {
     console.error("Error creating new page:", error);
     res.status(500).json({ error: "Failed to create new page" });
@@ -475,6 +523,40 @@ app.get("/pages/:pageId/deployments/:deploymentId", async (req, res) => {
   } catch (error) {
     console.error("Error fetching deployment:", error);
     res.status(500).json({ error: "Failed to fetch deployment" });
+  }
+});
+
+app.delete("/pages/api/pages/:id", async (req, res) => {
+  try {
+    const { id: pageId } = req.params;
+
+    if (!pageId) {
+      return res.status(400).json({ error: "Missing pageId parameter" });
+    }
+
+    // Delete the page itself (cascading deletions for related tables)
+    const deletedPage = await db
+      .delete(pagesTable)
+      .where(eq(pagesTable.id, pageId))
+      .returning({ id: pagesTable.id });
+
+    if (deletedPage.length === 0) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+
+    // Delete the corresponding folder in PAGES_DIR using pageId
+    const pageFolderPath = path.join(process.env.PAGES_DIR, pageId);
+    try {
+      await fsPromises.rm(pageFolderPath, { recursive: true, force: true });
+      console.log(`Deleted folder: ${pageFolderPath}`);
+    } catch (folderError) {
+      console.error(`Failed to delete folder ${pageFolderPath}:`, folderError);
+    }
+
+    res.status(200).json({ message: "Page and folder deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting page:", error);
+    res.status(500).json({ error: "Failed to delete page" });
   }
 });
 

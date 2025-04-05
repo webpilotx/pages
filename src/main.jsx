@@ -219,7 +219,24 @@ function CreatePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await handleCreateNewPage({ repo, name, branch, buildScript, envVars });
+    try {
+      const response = await fetch("/pages/api/create-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repo, name, branch, buildScript, envVars }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create page");
+      }
+
+      const { pageId, deploymentId } = await response.json();
+
+      // Navigate to the logs page for the new deployment
+      navigate(`/pages/${pageId}/logs/${deploymentId}`);
+    } catch (error) {
+      console.error("Error creating page:", error);
+    }
   };
 
   const indexOfLastRepo = currentPage * reposPerPage;
@@ -799,20 +816,29 @@ function Settings() {
   const { pageDetails } = useOutletContext();
 
   const handleDeletePage = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this page? This action cannot be undone."
+      )
+    ) {
+      return; // Exit if the user cancels the confirmation
+    }
+
     try {
       const response = await fetch(`/pages/api/pages/${pageDetails.id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete page");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete page");
       }
 
       alert("Page deleted successfully.");
       window.location.href = "/pages";
     } catch (error) {
       console.error("Error deleting page:", error);
-      alert("Failed to delete page.");
+      alert(`Failed to delete page: ${error.message}`);
     }
   };
 
