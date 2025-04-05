@@ -75,26 +75,39 @@ const execPromise = (command) =>
       .join("\n");
     await fs.writeFile(path.join(cloneDir, ".env"), envFileContent);
 
-    let buildOutput = "No build script provided.";
     let exitCode = 0;
 
     if (page.buildScript) {
       console.log(`Running build script: ${page.buildScript}`);
       const buildCommand = `cd ${cloneDir} && ${page.buildScript}`;
+      const logDir = path.join(process.env.PAGES_DIR, "deployments");
+      const logFilePath = path.join(logDir, `${deploymentId}.log`);
+
       try {
-        buildOutput = await execPromise(buildCommand);
+        const logStream = await fs.open(logFilePath, "a"); // Open log file in append mode
+        const childProcess = exec(buildCommand, { shell: true });
+
+        childProcess.stdout.pipe(logStream.createWriteStream());
+        childProcess.stderr.pipe(logStream.createWriteStream());
+
+        await new Promise((resolve, reject) => {
+          childProcess.on("close", (code) => {
+            exitCode = code;
+            resolve();
+          });
+          childProcess.on("error", (error) => {
+            reject(error);
+          });
+        });
+
+        await logStream.close(); // Close the log file stream
       } catch (error) {
-        buildOutput = error.message;
+        console.error(`Error running build script: ${error.message}`);
         exitCode = 1; // Non-zero exit code indicates failure
       }
+    } else {
+      console.log("No build script provided.");
     }
-
-    // Write the output to the log file
-    const logDir = path.join(process.env.PAGES_DIR, "deployments");
-    const logFilePath = path.join(logDir, `${deploymentId}.log`);
-    console.log(`Writing build output to log file: ${logFilePath}`);
-    await fs.writeFile(logFilePath, buildOutput);
-    console.log(`Build output written to log file: ${logFilePath}`);
 
     process.exit(exitCode); // Exit with the appropriate code
   } catch (error) {

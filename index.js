@@ -470,10 +470,6 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       res.write(chunk); // Write chunks of data to the response
     });
 
-    stream.on("end", () => {
-      res.end(); // End the response when the stream ends
-    });
-
     stream.on("error", (error) => {
       console.error(
         `Error reading log file for deployment ${deploymentId}:`,

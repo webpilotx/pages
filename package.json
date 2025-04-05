@@ -34,7 +34,8 @@
   "nodemonConfig": {
     "watch": [
       "index.js",
-      "schema.js"
+      "schema.js",
+      "worker.js"
     ]
   }
 }
