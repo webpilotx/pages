@@ -500,14 +500,17 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
 
     // Check if the "DEPLOYMENT COMPLETED" token exists in the log file
     const logContent = await fsPromises.readFile(logFilePath, "utf-8");
-    if (logContent.includes("===DEPLOYMENT COMPLETED===")) {
+    const isCompleted = logContent.includes("===DEPLOYMENT COMPLETED===");
+
+    if (isCompleted) {
       console.log(`Deployment ${deploymentId} already completed.`);
       res.setHeader("Content-Type", "text/plain");
-      return res.send(logContent); // Return the entire log file content
+      res.write(logContent); // Write the entire log file content
+      return res.end(); // End the response
     }
 
-    // Set headers for streaming
-    res.setHeader("Content-Type", "text/plain");
+    // Set headers for streaming if deployment is not completed
+    res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
