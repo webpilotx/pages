@@ -463,7 +463,7 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Stream the log file content
+    // Watch the log file for changes and stream updates
     const stream = fs.createReadStream(logFilePath, { encoding: "utf-8" });
 
     stream.on("data", (chunk) => {
@@ -478,12 +478,26 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       res.end("Failed to read log file");
     });
 
+    // Watch for new content in the log file
+    const watcher = fs.watch(logFilePath, { encoding: "utf-8" }, async () => {
+      try {
+        const newContent = await fsPromises.readFile(logFilePath, "utf-8");
+        res.write(newContent); // Write new content to the response
+      } catch (error) {
+        console.error(
+          `Error reading updated content for deployment ${deploymentId}:`,
+          error
+        );
+      }
+    });
+
     // Handle client disconnect
     req.on("close", () => {
       console.log(
         `Client disconnected from log stream for deployment ${deploymentId}`
       );
-      stream.destroy(); // Stop reading the file if the client disconnects
+      stream.destroy(); // Stop reading the file
+      watcher.close(); // Stop watching the file
     });
   } catch (error) {
     console.error(
