@@ -74,7 +74,8 @@ const execPromise = (command) =>
   let exitCode = 0;
 
   if (page.buildScript) {
-    const buildCommand = `cd ${cloneDir} && ${page.buildScript}`;
+    // Use bash explicitly to ensure source works
+    const buildCommand = `cd ${cloneDir} && bash -c "source ~/.bashrc && ${page.buildScript}"`;
     const logStream = await fs.open(logFilePath, "a");
     const childProcess = exec(buildCommand, { shell: true });
 
