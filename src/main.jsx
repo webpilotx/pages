@@ -676,7 +676,7 @@ function DeploymentLogs() {
 
   useEffect(() => {
     fetchDeployments();
-  }, []); // Refetch deployments whenever the component is rendered
+  }, []);
 
   // If deploymentId is present, render only the selected deployment's logs
   if (deploymentId) {
