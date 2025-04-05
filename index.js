@@ -302,12 +302,13 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
       .values({ pageId: page.id })
       .returning({ id: deploymentsTable.id });
 
-    // Initialize the log file
+    // Initialize the log file with an initial text
     const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fsPromises.mkdir(logDir, { recursive: true });
     const logFilePath = path.join(logDir, `${deployment.id}.log`);
-    console.log(`Creating empty log file: ${logFilePath}`);
-    await fsPromises.writeFile(logFilePath, ""); // Create an empty log file
+    console.log(`Creating log file: ${logFilePath}`);
+    const initialLogText = "Deployment initialized. Logs will appear here.\n";
+    await fsPromises.writeFile(logFilePath, initialLogText); // Initialize with text
 
     // Trigger the build worker using a worker thread
     const worker = new Worker(path.join(__dirname, "worker.js"), {
