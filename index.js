@@ -419,12 +419,23 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
     res.write("event: connected\n");
     res.write("data: Log streaming started\n\n");
 
+    // Send the initial log content
+    try {
+      const initialLogs = await fsPromises.readFile(logFilePath, "utf-8");
+      res.write("event: log\n");
+      res.write(`data: ${JSON.stringify(initialLogs)}\n\n`);
+    } catch (error) {
+      console.error("Error reading initial log file:", error);
+      res.write("event: error\n");
+      res.write("data: Failed to read initial log file\n\n");
+    }
+
     // Watch the log file for changes and stream updates
     const watcher = fs.watch(logFilePath, { encoding: "utf-8" }, async () => {
       try {
         const logs = await fsPromises.readFile(logFilePath, "utf-8");
         res.write("event: log\n");
-        res.write(`data: ${JSON.stringify(logs)}\n\n`); // Ensure logs are JSON-safe
+        res.write(`data: ${JSON.stringify(logs)}\n\n`);
       } catch (error) {
         console.error("Error reading log file:", error);
         res.write("event: error\n");
