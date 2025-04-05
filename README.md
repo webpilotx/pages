@@ -1,34 +1,47 @@
-# Vite + React Template
+# Pages Deployment Manager
 
-This repository is a **template repository** for building React applications using Vite. It includes a simple counter example and links to learn more about Vite and React.
+This web application is a deployment management tool for GitHub repositories. It allows users to create, manage, and deploy static or dynamic web pages with ease. The app integrates with GitHub to fetch repositories, branches, and manage deployments using worker threads and systemd services.
 
 ## Features
 
-- **Vite**: Fast and modern build tool.
-- **React**: A JavaScript library for building user interfaces.
-- **Tailwind CSS**: Utility-first CSS framework for styling.
+- **GitHub Integration**:
 
-## Getting Started
+  - Connect GitHub accounts to fetch repositories and branches.
+  - OAuth-based authentication for managing multiple accounts.
 
-### Prerequisites
+- **Page Management**:
 
-Make sure you have the following installed:
+  - Create new pages by selecting a repository, branch, and optional build script.
+  - Edit existing pages, including updating environment variables and build scripts.
+  - Delete pages, including all associated deployments and files.
 
-- [Node.js](https://nodejs.org/) (version 16 or higher)
-- [pnpm](https://pnpm.io/)
+- **Environment Variables**:
 
-### Using This Template
+  - Add, edit, and remove environment variables for each page.
+  - Automatically generate `.env` files for deployments.
 
-1. Click the "Use this template" button on the repository page.
-2. Create a new repository from this template.
+- **Deployment Management**:
 
-### Installation
+  - Trigger deployments for pages using worker threads.
+  - View deployment logs in real-time via a streaming API.
+  - Monitor deployment statuses (e.g., running, success, or failure).
+
+- **Systemd Integration**:
+
+  - Automatically create and manage user-level systemd services for deployed pages.
+  - Restart services after deployments.
+
+- **Logs and History**:
+  - View deployment logs for each page.
+  - Access historical deployment records.
+
+## Installation
 
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
-   cd template
+   git clone https://github.com/your-repo/pages-deployment-manager.git
+   cd pages-deployment-manager
    ```
 
 2. Install dependencies:
@@ -37,38 +50,74 @@ Make sure you have the following installed:
    pnpm install
    ```
 
-### Development
+3. Set up environment variables:
+   Create a `.env` file in the root directory with the following variables:
 
-Start the development server:
+   ```env
+   DB_FILE_NAME=path/to/your/database.sqlite
+   PAGES_DIR=/path/to/pages/directory
+   VITE_GITHUB_CLIENT_ID=your_github_client_id
+   GITHUB_CLIENT_SECRET=your_github_client_secret
+   PORT=3000
+   ```
 
-```bash
-pnpm dev
-```
+4. Run database migrations:
 
-Open your browser and navigate to `http://localhost:5173`.
+   ```bash
+   npx drizzle-kit migrate
+   ```
 
-### Build
+5. Start the development server:
+   ```bash
+   pnpm run dev
+   ```
 
-To create a production build:
+## Usage
 
-```bash
-pnpm build
-```
+1. **Connect GitHub Accounts**:
 
-### Preview
+   - Navigate to `/pages` and authorize your GitHub account.
+   - Fetch repositories and branches for deployment.
 
-To preview the production build locally:
+2. **Create a Page**:
 
-```bash
-pnpm preview
-```
+   - Select a repository and branch.
+   - Optionally, provide a build script and environment variables.
+   - Save and deploy the page.
 
-## Learn More
+3. **Manage Pages**:
 
-- [Vite Documentation](https://vite.dev)
-- [React Documentation](https://react.dev)
-- [Tailwind CSS Documentation](https://tailwindcss.com)
+   - Edit page details, including build scripts and environment variables.
+   - View deployment logs and statuses.
+   - Delete pages and associated resources.
+
+4. **Monitor Deployments**:
+   - View real-time logs for active deployments.
+   - Check deployment history for completed tasks.
+
+## API Endpoints
+
+- **Provider Accounts**: `/pages/api/provider-accounts`
+- **Pages List**: `/pages/api/pages-list`
+- **Repositories**: `/pages/api/repositories`
+- **Branches**: `/pages/api/branches`
+- **Create Page**: `/pages/api/create-page`
+- **Save and Deploy**: `/pages/api/save-and-deploy`
+- **Deployments**: `/pages/api/deployments`
+- **Deployment Logs**: `/pages/api/deployment-log-stream`
+
+## Technologies Used
+
+- **Frontend**: React, React Router
+- **Backend**: Express, Drizzle ORM, Worker Threads
+- **Database**: SQLite
+- **Deployment**: Systemd services
+- **Version Control**: GitHub API integration
+
+## Contributing
+
+Contributions are welcome! Please fork the repository and submit a pull request with your changes.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
