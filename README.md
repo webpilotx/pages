@@ -1,123 +1,140 @@
-# Pages Deployment Manager
+# Pages Deployment System
 
-This web application is a deployment management tool for GitHub repositories. It allows users to create, manage, and deploy static or dynamic web pages with ease. The app integrates with GitHub to fetch repositories, branches, and manage deployments using worker threads and systemd services.
+This project is a deployment system for managing pages, repositories, and deployments. It includes a backend API and a frontend client for interacting with the system.
 
 ## Features
 
-- **GitHub Integration**:
+### Backend
 
-  - Connect GitHub accounts to fetch repositories and branches.
-  - OAuth-based authentication for managing multiple accounts.
+- **Provider Accounts**: Manage GitHub accounts for fetching repositories and branches.
+- **Pages Management**: Create, edit, and delete pages with associated repositories, branches, and environment variables.
+- **Deployments**: Trigger deployments for pages, stream logs, and manage deployment statuses.
+- **Environment Variables**: Configure environment variables for each page.
+- **Systemd Integration**: Automatically create and manage systemd services for deployed pages.
 
-- **Page Management**:
+### Frontend
 
-  - Create new pages by selecting a repository, branch, and optional build script.
-  - Edit existing pages, including updating environment variables and build scripts.
-  - Delete pages, including all associated deployments and files.
+- **Pages List**: View all pages with their repository and branch information.
+- **Create Page**: Select a repository, branch, and configure environment variables to create a new page.
+- **Edit Page**: Update page details, including branch, build script, and environment variables.
+- **Deployment Logs**: View logs for each deployment, with real-time streaming for ongoing deployments.
+- **Settings**: Delete pages and associated resources.
 
-- **Environment Variables**:
+## API Endpoints
 
-  - Add, edit, and remove environment variables for each page.
-  - Automatically generate `.env` files for deployments.
+### Provider Accounts
 
-- **Deployment Management**:
+- `GET /pages/api/provider-accounts`: Fetch connected GitHub accounts.
 
-  - Trigger deployments for pages using worker threads.
-  - View deployment logs in real-time via a streaming API.
-  - Monitor deployment statuses (e.g., running, success, or failure).
+### Pages
 
-- **Systemd Integration**:
+- `GET /pages/api/pages-list`: Fetch the list of pages.
+- `POST /pages/api/create-page`: Create a new page.
+- `POST /pages/api/save-and-deploy`: Save and deploy a page.
+- `DELETE /pages/api/pages/:id`: Delete a page and its associated resources.
 
-  - Automatically create and manage user-level systemd services for deployed pages.
-  - Restart services after deployments.
+### Repositories and Branches
 
-- **Logs and History**:
-  - View deployment logs for each page.
-  - Access historical deployment records.
+- `GET /pages/api/repositories`: Fetch repositories for connected accounts.
+- `GET /pages/api/branches`: Fetch branches for a selected repository.
 
-## Installation
+### Deployments
+
+- `GET /pages/api/deployments`: Fetch deployments for a page.
+- `GET /pages/api/deployment-log-stream`: Stream logs for a deployment.
+- `GET /pages/:pageId/deployments/:deploymentId`: Fetch details for a specific deployment.
+
+### Environment Variables
+
+- `GET /pages/api/env-vars`: Fetch environment variables for a page.
+
+## Frontend Features
+
+### Pages List
+
+- Displays all pages with their repository and branch information.
+- Navigate to edit, logs, or settings for each page.
+
+### Create Page
+
+- Select a GitHub account and repository.
+- Choose a branch and configure environment variables.
+- Add a build script (optional).
+- Save and deploy the page.
+
+### Edit Page
+
+- Update branch, build script, and environment variables.
+- Save changes and trigger a new deployment.
+
+### Deployment Logs
+
+- View logs for each deployment.
+- Real-time log streaming for ongoing deployments.
+
+### Settings
+
+- Delete a page and its associated resources, including deployments, logs, and systemd services.
+
+## Systemd Integration
+
+- Automatically creates a systemd service for each deployed page.
+- Manages the lifecycle of the service (start, stop, enable, disable).
+
+## Development
+
+### Prerequisites
+
+- Node.js
+- Git
+- Systemd (for service management)
+
+### Setup
 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-repo/pages-deployment-manager.git
-   cd pages-deployment-manager
+   git clone https://github.com/your-repo/pages-deployment-system.git
+   cd pages-deployment-system
    ```
 
 2. Install dependencies:
 
    ```bash
-   pnpm install
+   npm install
    ```
 
-3. Set up environment variables:
-   Create a `.env` file in the root directory with the following variables:
+3. Configure environment variables in a `.env` file:
 
    ```env
-   DB_FILE_NAME=path/to/your/database.sqlite
-   PAGES_DIR=/path/to/pages/directory
+   DB_FILE_NAME=path/to/database.sqlite
+   PAGES_DIR=/path/to/pages
    VITE_GITHUB_CLIENT_ID=your_github_client_id
    GITHUB_CLIENT_SECRET=your_github_client_secret
-   PORT=3000
    ```
 
-4. Run database migrations:
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+### Running the Worker
+
+The worker is automatically triggered during deployments to handle cloning, building, and starting services.
+
+## Deployment
+
+1. Build the frontend:
 
    ```bash
-   npx drizzle-kit migrate
+   npm run build
    ```
 
-5. Start the development server:
+2. Start the production server:
    ```bash
-   pnpm run dev
+   npm start
    ```
-
-## Usage
-
-1. **Connect GitHub Accounts**:
-
-   - Navigate to `/pages` and authorize your GitHub account.
-   - Fetch repositories and branches for deployment.
-
-2. **Create a Page**:
-
-   - Select a repository and branch.
-   - Optionally, provide a build script and environment variables.
-   - Save and deploy the page.
-
-3. **Manage Pages**:
-
-   - Edit page details, including build scripts and environment variables.
-   - View deployment logs and statuses.
-   - Delete pages and associated resources.
-
-4. **Monitor Deployments**:
-   - View real-time logs for active deployments.
-   - Check deployment history for completed tasks.
-
-## API Endpoints
-
-- **Provider Accounts**: `/pages/api/provider-accounts`
-- **Pages List**: `/pages/api/pages-list`
-- **Repositories**: `/pages/api/repositories`
-- **Branches**: `/pages/api/branches`
-- **Create Page**: `/pages/api/create-page`
-- **Save and Deploy**: `/pages/api/save-and-deploy`
-- **Deployments**: `/pages/api/deployments`
-- **Deployment Logs**: `/pages/api/deployment-log-stream`
-
-## Technologies Used
-
-- **Frontend**: React, React Router
-- **Backend**: Express, Drizzle ORM, Worker Threads
-- **Database**: SQLite
-- **Deployment**: Systemd services
-- **Version Control**: GitHub API integration
-
-## Contributing
-
-Contributions are welcome! Please fork the repository and submit a pull request with your changes.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License.
