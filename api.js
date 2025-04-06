@@ -943,7 +943,7 @@ app.post("/pages/api/github-webhook", async (req, res) => {
           config: {
             url: `${process.env.HOST}/pages/github-webhook-callback`, // Updated URL
             content_type: "json",
-            secret: process.env.GITHUB_WEBHOOK_SECRET, // Add the secret
+            secret: GITHUB_WEBHOOK_SECRET, // Add the secret
           },
         }),
       }
