@@ -121,24 +121,6 @@ function CreatePage() {
     }
   };
 
-  const handleCreateNewPage = async (newPage) => {
-    try {
-      const response = await fetch("/pages/api/create-page", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newPage),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create page");
-      }
-
-      navigate("/pages");
-    } catch (error) {
-      console.error("Error creating page:", error);
-    }
-  };
-
   useEffect(() => {
     fetchAccounts()
       .then((fetchedAccounts) => {
@@ -238,7 +220,7 @@ function CreatePage() {
       const { pageId, deploymentId } = await response.json();
 
       // Navigate to the logs page for the new deployment
-      navigate(`/pages/${pageId}/logs/${deploymentId}`);
+      navigate(`/${pageId}/logs/${deploymentId}`);
     } catch (error) {
       console.error("Error creating page:", error);
     }
@@ -637,7 +619,7 @@ function EditDetails() {
       }
 
       const data = await response.json();
-      navigate(`/pages/${pageDetails.id}/logs/${data.deploymentId}`);
+      navigate(`/${pageDetails.id}/logs/${data.deploymentId}`);
     } catch (error) {
       console.error("Error deploying:", error);
       alert("Failed to deploy.");
