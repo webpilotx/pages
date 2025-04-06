@@ -6,7 +6,6 @@ import {
   BrowserRouter as Router,
   Routes,
   useNavigate,
-  useOutletContext,
   useParams,
 } from "react-router-dom";
 import "./index.css";
@@ -766,15 +765,13 @@ function EditDetails() {
 }
 
 function DeploymentLogs() {
-  const { pageDetails } = useOutletContext();
+  const { id: pageId } = useParams(); // Use pageId directly from useParams
   const [deployments, setDeployments] = useState([]);
   const { deploymentId } = useParams(); // Get deploymentId from the route
 
   const fetchDeployments = async () => {
     try {
-      const response = await fetch(
-        `/pages/api/deployments?pageId=${pageDetails.id}`
-      );
+      const response = await fetch(`/pages/api/deployments?pageId=${pageId}`);
       const data = await response.json();
       setDeployments(data);
     } catch (error) {
@@ -784,7 +781,7 @@ function DeploymentLogs() {
 
   useEffect(() => {
     fetchDeployments();
-  }, []);
+  }, [pageId]);
 
   // If deploymentId is present, render only the selected deployment's logs
   if (deploymentId) {
@@ -930,7 +927,7 @@ function DeploymentLogDetails() {
 }
 
 function Settings() {
-  const { pageDetails } = useOutletContext();
+  const { id: pageId } = useParams(); // Use pageId directly from useParams
 
   const handleDeletePage = async () => {
     if (
@@ -942,7 +939,7 @@ function Settings() {
     }
 
     try {
-      const response = await fetch(`/pages/api/pages/${pageDetails.id}`, {
+      const response = await fetch(`/pages/api/pages/${pageId}`, {
         method: "DELETE",
       });
 
