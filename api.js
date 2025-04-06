@@ -1,3 +1,4 @@
+import { exec } from "child_process"; // Import exec from child_process
 import "dotenv/config";
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
@@ -7,8 +8,6 @@ import fetch from "node-fetch"; // Import node-fetch
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { Worker } from "worker_threads"; // Import Worker from worker_threads
-import { exec } from "child_process"; // Import exec from child_process
-import { jwtVerify, importSPKI } from "jose"; // Import jwtVerify from jose
 import {
   accountsTable,
   deploymentsTable,
@@ -25,29 +24,6 @@ const db = drizzle(process.env.DB_FILE_NAME);
 const app = express();
 
 app.use(express.json()); // Middleware to parse JSON request bodies
-
-// Middleware to verify JWT for all routes under /pages/api
-app.use("/pages/api", async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const token = authHeader.split(" ")[1];
-  try {
-    const publicKey = await importSPKI(process.env.VITE_PUBLIC_KEY, "RS256");
-    const { payload } = await jwtVerify(token, publicKey);
-
-    if (payload.username !== process.env.ADMIN_USERNAME) {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-
-    next();
-  } catch (error) {
-    console.error("JWT verification failed:", error);
-    res.status(401).json({ error: "Unauthorized" });
-  }
-});
 
 // Define execPromise to execute shell commands as promises
 const execPromise = (command) => {

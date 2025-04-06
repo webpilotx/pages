@@ -10,16 +10,9 @@ import {
 } from "react-router-dom";
 import "./index.css";
 
-// Helper function to wrap fetch with Authorization header
-const authorizedFetch = async (url, options = {}) => {
-  const token = localStorage.getItem("token");
-  const headers = new Headers(options.headers || {});
-
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  return fetch(url, { ...options, headers });
+// Helper function to wrap fetch
+const simpleFetch = async (url, options = {}) => {
+  return fetch(url, options);
 };
 
 function PagesList() {
@@ -28,7 +21,7 @@ function PagesList() {
 
   const fetchPagesList = async () => {
     try {
-      const response = await authorizedFetch("/pages/api/pages-list");
+      const response = await simpleFetch("/pages/api/pages-list");
       const data = await response.json();
       setPagesList(data);
     } catch (error) {
@@ -100,7 +93,7 @@ function CreatePage() {
 
   const fetchAccounts = async () => {
     try {
-      const response = await authorizedFetch("/pages/api/provider-accounts");
+      const response = await simpleFetch("/pages/api/provider-accounts");
       const data = await response.json();
       return data;
     } catch (error) {
@@ -111,7 +104,7 @@ function CreatePage() {
 
   const fetchRepositories = async (accountLogin) => {
     try {
-      const response = await authorizedFetch(
+      const response = await simpleFetch(
         `/pages/api/repositories?account=${accountLogin}`
       );
       const data = await response.json();
@@ -124,7 +117,7 @@ function CreatePage() {
 
   const fetchBranches = async (repoFullName) => {
     try {
-      const response = await authorizedFetch(
+      const response = await simpleFetch(
         `/pages/api/branches?repo=${repoFullName}`
       );
       const data = await response.json();
@@ -137,7 +130,7 @@ function CreatePage() {
 
   const handleCreateNewPage = async (newPage) => {
     try {
-      const response = await authorizedFetch("/pages/api/create-page", {
+      const response = await simpleFetch("/pages/api/create-page", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPage),
@@ -232,7 +225,7 @@ function CreatePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await authorizedFetch("/pages/api/create-page", {
+      const response = await simpleFetch("/pages/api/create-page", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -472,13 +465,13 @@ function PageDetailsLayout() {
 
   const fetchPageDetails = async () => {
     try {
-      const response = await authorizedFetch(`/pages/api/pages-list`);
+      const response = await simpleFetch(`/pages/api/pages-list`);
       const pages = await response.json();
       const page = pages.find((p) => p.id === parseInt(pageId));
 
       if (page) {
         // Fetch environment variables for the page
-        const envVarsResponse = await authorizedFetch(
+        const envVarsResponse = await simpleFetch(
           `/pages/api/env-vars?pageId=${pageId}`
         );
         const envVars = await envVarsResponse.json();
@@ -492,9 +485,7 @@ function PageDetailsLayout() {
   const fetchBranches = async (repo) => {
     try {
       setLoadingBranches(true);
-      const response = await authorizedFetch(
-        `/pages/api/branches?repo=${repo}`
-      );
+      const response = await simpleFetch(`/pages/api/branches?repo=${repo}`);
       const data = await response.json();
       setBranches(data.branches || []);
     } catch (error) {
@@ -575,12 +566,12 @@ function EditDetails() {
   useEffect(() => {
     const fetchPageDetails = async () => {
       try {
-        const response = await authorizedFetch(`/pages/api/pages-list`);
+        const response = await simpleFetch(`/pages/api/pages-list`);
         const pages = await response.json();
         const page = pages.find((p) => p.id === parseInt(pageId));
 
         if (page) {
-          const envVarsResponse = await authorizedFetch(
+          const envVarsResponse = await simpleFetch(
             `/pages/api/env-vars?pageId=${pageId}`
           );
           const envVars = await envVarsResponse.json();
@@ -601,7 +592,7 @@ function EditDetails() {
       const fetchBranches = async () => {
         try {
           setLoadingBranches(true);
-          const response = await authorizedFetch(
+          const response = await simpleFetch(
             `/pages/api/branches?repo=${pageDetails.repo}`
           );
           const data = await response.json();
@@ -640,7 +631,7 @@ function EditDetails() {
 
   const handleDeploy = async () => {
     try {
-      const response = await authorizedFetch("/pages/api/deploy", {
+      const response = await simpleFetch("/pages/api/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -670,7 +661,7 @@ function EditDetails() {
     }
 
     try {
-      const response = await authorizedFetch("/pages/api/save-and-deploy", {
+      const response = await simpleFetch("/pages/api/save-and-deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -794,7 +785,7 @@ function DeploymentLogs() {
 
   const fetchDeployments = async () => {
     try {
-      const response = await authorizedFetch(
+      const response = await simpleFetch(
         `/pages/api/deployments?pageId=${pageId}`
       );
       const data = await response.json();
@@ -851,7 +842,7 @@ function DeploymentLogDetails() {
 
   const fetchDeployment = async () => {
     try {
-      const response = await authorizedFetch(
+      const response = await simpleFetch(
         `/pages/${pageId}/deployments/${deploymentId}`
       );
       if (!response.ok) {
@@ -873,7 +864,7 @@ function DeploymentLogDetails() {
     // Fetch logs
     const fetchLogStream = async () => {
       try {
-        const response = await authorizedFetch(
+        const response = await simpleFetch(
           `/pages/api/deployment-log-stream?deploymentId=${deploymentId}`
         );
 
@@ -959,7 +950,7 @@ function Settings() {
   const fetchWebhookStatus = async () => {
     try {
       setLoadingWebhook(true);
-      const response = await authorizedFetch(
+      const response = await simpleFetch(
         `/pages/api/github-webhook-status?pageId=${pageId}`
       );
       const data = await response.json();
@@ -974,7 +965,7 @@ function Settings() {
 
   const handleAddWebhook = async () => {
     try {
-      const response = await authorizedFetch(`/pages/api/github-webhook`, {
+      const response = await simpleFetch(`/pages/api/github-webhook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pageId }),
@@ -1000,7 +991,7 @@ function Settings() {
     }
 
     try {
-      const response = await authorizedFetch(`/pages/api/github-webhook`, {
+      const response = await simpleFetch(`/pages/api/github-webhook`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pageId }),
@@ -1032,7 +1023,7 @@ function Settings() {
     }
 
     try {
-      const response = await authorizedFetch(`/pages/api/pages/${pageId}`, {
+      const response = await simpleFetch(`/pages/api/pages/${pageId}`, {
         method: "DELETE",
       });
 
@@ -1102,37 +1093,40 @@ function Settings() {
   );
 }
 
+function AppContent() {
+  return (
+    <div className="min-h-screen flex flex-col bg-white text-black">
+      <nav className="bg-gray-200 border-b border-gray-300">
+        <div className="container mx-auto px-4 py-3 flex items-center">
+          <Link
+            to="/pages"
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Home
+          </Link>
+        </div>
+      </nav>
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <Routes>
+          <Route path="/pages" element={<PagesList />} />
+          <Route path="/pages/new" element={<CreatePage />} />
+          <Route path="/pages/:id" element={<PageDetailsLayout />}>
+            <Route path="edit" element={<EditDetails />} />
+            <Route path="logs" element={<DeploymentLogs />}>
+              <Route path=":deploymentId" element={<DeploymentLogDetails />} />
+            </Route>
+            <Route path="settings" element={<Settings />} />
+          </Route>
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
 function App() {
   return (
     <Router>
-      <div className="min-h-screen flex flex-col bg-white text-black">
-        <nav className="bg-gray-200 border-b border-gray-300">
-          <div className="container mx-auto px-4 py-3 flex items-center">
-            <Link
-              to="/pages"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Home
-            </Link>
-          </div>
-        </nav>
-        <main className="flex-grow container mx-auto px-4 py-8">
-          <Routes>
-            <Route path="/pages" element={<PagesList />} />
-            <Route path="/pages/new" element={<CreatePage />} />
-            <Route path="/pages/:id" element={<PageDetailsLayout />}>
-              <Route path="edit" element={<EditDetails />} />
-              <Route path="logs" element={<DeploymentLogs />}>
-                <Route
-                  path=":deploymentId"
-                  element={<DeploymentLogDetails />}
-                />
-              </Route>
-              <Route path="settings" element={<Settings />} />
-            </Route>
-          </Routes>
-        </main>
-      </div>
+      <AppContent />
     </Router>
   );
 }
