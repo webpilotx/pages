@@ -1026,7 +1026,9 @@ app.delete("/pages/api/github-webhook", async (req, res) => {
 
     const hooks = await hooksResponse.json();
     const webhook = hooks.find((hook) =>
-      hook.config.url.includes(process.env.WEBHOOK_URL)
+      hook.config.url.includes(
+        `${process.env.HOST}/pages/github-webhook-callback`
+      )
     );
 
     if (!webhook) {
