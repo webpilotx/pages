@@ -544,14 +544,57 @@ function PageDetailsLayout() {
 }
 
 function EditDetails() {
-  const { pageDetails, setPageDetails, branches, loadingBranches } =
-    useOutletContext();
+  const { id: pageId } = useParams();
   const navigate = useNavigate();
+  const [pageDetails, setPageDetails] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
   const [originalDetails, setOriginalDetails] = useState(null);
 
   useEffect(() => {
-    setOriginalDetails(JSON.stringify(pageDetails)); // Store the original details as a string
-  }, [pageDetails]);
+    const fetchPageDetails = async () => {
+      try {
+        const response = await fetch(`/pages/api/pages-list`);
+        const pages = await response.json();
+        const page = pages.find((p) => p.id === parseInt(pageId));
+
+        if (page) {
+          const envVarsResponse = await fetch(
+            `/pages/api/env-vars?pageId=${pageId}`
+          );
+          const envVars = await envVarsResponse.json();
+          const fullDetails = { ...page, envVars };
+          setPageDetails(fullDetails);
+          setOriginalDetails(JSON.stringify(fullDetails));
+        }
+      } catch (error) {
+        console.error("Error fetching page details:", error);
+      }
+    };
+
+    fetchPageDetails();
+  }, [pageId]);
+
+  useEffect(() => {
+    if (pageDetails?.repo) {
+      const fetchBranches = async () => {
+        try {
+          setLoadingBranches(true);
+          const response = await fetch(
+            `/pages/api/branches?repo=${pageDetails.repo}`
+          );
+          const data = await response.json();
+          setBranches(data.branches || []);
+        } catch (error) {
+          console.error("Error fetching branches:", error);
+        } finally {
+          setLoadingBranches(false);
+        }
+      };
+
+      fetchBranches();
+    }
+  }, [pageDetails?.repo]);
 
   const isEdited = JSON.stringify(pageDetails) !== originalDetails;
 
@@ -622,6 +665,10 @@ function EditDetails() {
       alert("Failed to save and deploy.");
     }
   };
+
+  if (!pageDetails) {
+    return <p className="text-center text-gray-500">Loading page details...</p>;
+  }
 
   return (
     <div>
