@@ -833,7 +833,7 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
 });
 
 // API to handle GitHub webhook callbacks
-app.post("/pages/api/github-webhook-callback", async (req, res) => {
+app.post("/pages/github-webhook-callback", async (req, res) => {
   try {
     const event = req.headers["x-github-event"];
     const signature = req.headers["x-hub-signature-256"];
@@ -841,7 +841,7 @@ app.post("/pages/api/github-webhook-callback", async (req, res) => {
 
     // Verify the webhook signature
     const hmac = crypto.createHmac("sha256", GITHUB_WEBHOOK_SECRET);
-    hmac.update(payload); // Use raw payload for signature verification 
+    hmac.update(payload); // Use raw payload for signature verification
     const expectedSignature = `sha256=${hmac.digest("hex")}`;
 
     if (signature !== expectedSignature) {
@@ -941,7 +941,7 @@ app.post("/pages/api/github-webhook", async (req, res) => {
           active: true,
           events: ["push"],
           config: {
-            url: `${process.env.HOST}/pages/api/github-webhook-callback`, // Updated URL
+            url: `${process.env.HOST}/pages/github-webhook-callback`, // Updated URL
             content_type: "json",
             secret: process.env.GITHUB_WEBHOOK_SECRET, // Add the secret
           },
