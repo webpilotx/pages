@@ -928,6 +928,72 @@ function DeploymentLogDetails() {
 
 function Settings() {
   const { id: pageId } = useParams(); // Use pageId directly from useParams
+  const [webhookStatus, setWebhookStatus] = useState(null);
+  const [loadingWebhook, setLoadingWebhook] = useState(false);
+
+  const fetchWebhookStatus = async () => {
+    try {
+      setLoadingWebhook(true);
+      const response = await fetch(
+        `/pages/api/github-webhook-status?pageId=${pageId}`
+      );
+      const data = await response.json();
+      setWebhookStatus(data.webhookExists);
+    } catch (error) {
+      console.error("Error fetching webhook status:", error);
+      setWebhookStatus(null);
+    } finally {
+      setLoadingWebhook(false);
+    }
+  };
+
+  const handleAddWebhook = async () => {
+    try {
+      const response = await fetch(`/pages/api/github-webhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add webhook");
+      }
+
+      alert("Webhook added successfully.");
+      fetchWebhookStatus();
+    } catch (error) {
+      console.error("Error adding webhook:", error);
+      alert("Failed to add webhook.");
+    }
+  };
+
+  const handleRemoveWebhook = async () => {
+    if (!window.confirm("Are you sure you want to remove the webhook?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/pages/api/github-webhook`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to remove webhook");
+      }
+
+      alert("Webhook removed successfully.");
+      fetchWebhookStatus();
+    } catch (error) {
+      console.error("Error removing webhook:", error);
+      alert("Failed to remove webhook.");
+    }
+  };
+
+  useEffect(() => {
+    fetchWebhookStatus();
+  }, [pageId]);
 
   const handleDeletePage = async () => {
     if (
@@ -970,6 +1036,37 @@ function Settings() {
       >
         Delete Page
       </button>
+
+      <div className="mt-8">
+        <h3 className="text-xl font-bold mb-4">GitHub Webhook</h3>
+        {loadingWebhook ? (
+          <p className="text-gray-500">Checking webhook status...</p>
+        ) : webhookStatus ? (
+          <div>
+            <p className="text-green-600">
+              Webhook is active for this repository.
+            </p>
+            <button
+              onClick={handleRemoveWebhook}
+              className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+            >
+              Remove Webhook
+            </button>
+          </div>
+        ) : (
+          <div>
+            <p className="text-gray-600">
+              No webhook is set up for this repository.
+            </p>
+            <button
+              onClick={handleAddWebhook}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Add Webhook
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

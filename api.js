@@ -751,4 +751,212 @@ app.get("/pages/api/env-vars", async (req, res) => {
   }
 });
 
+app.get("/pages/api/github-webhook-status", async (req, res) => {
+  try {
+    const { pageId } = req.query;
+
+    if (!pageId) {
+      return res.status(400).json({ error: "Missing pageId parameter" });
+    }
+
+    // Fetch the page details
+    const [page] = await db
+      .select()
+      .from(pagesTable)
+      .where(eq(pagesTable.id, pageId));
+
+    if (!page) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+
+    // Fetch all connected accounts
+    const accounts = await db
+      .select({
+        accessToken: accountsTable.accessToken,
+      })
+      .from(accountsTable);
+
+    if (!accounts.length) {
+      return res.status(404).json({ error: "No connected accounts found" });
+    }
+
+    // Use the first account's access token to check webhook status
+    const response = await fetch(
+      `https://api.github.com/repos/${page.repo}/hooks`,
+      {
+        headers: {
+          Authorization: `Bearer ${accounts[0].accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Error fetching webhooks:", errorData);
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch webhooks", details: errorData });
+    }
+
+    const hooks = await response.json();
+    const webhookExists = hooks.some((hook) =>
+      hook.config.url.includes(process.env.WEBHOOK_URL)
+    );
+
+    res.json({ webhookExists });
+  } catch (error) {
+    console.error("Error checking webhook status:", error);
+    res.status(500).json({ error: "Failed to check webhook status" });
+  }
+});
+
+app.post("/pages/api/github-webhook", async (req, res) => {
+  try {
+    const { pageId } = req.body;
+
+    if (!pageId) {
+      return res.status(400).json({ error: "Missing pageId parameter" });
+    }
+
+    // Fetch the page details
+    const [page] = await db
+      .select()
+      .from(pagesTable)
+      .where(eq(pagesTable.id, pageId));
+
+    if (!page) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+
+    // Fetch the account associated with the page
+    const [account] = await db
+      .select({
+        accessToken: accountsTable.accessToken,
+      })
+      .from(accountsTable)
+      .where(eq(accountsTable.login, page.repo.split("/")[0])); // Extract account login from repo
+
+    if (!account) {
+      return res.status(404).json({ error: "No associated account found" });
+    }
+
+    // Use the associated account's access token to add a webhook
+    const response = await fetch(
+      `https://api.github.com/repos/${page.repo}/hooks`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${account.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "web",
+          active: true,
+          events: ["push"],
+          config: {
+            url: process.env.WEBHOOK_URL,
+            content_type: "json",
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Error adding webhook:", errorData);
+      return res
+        .status(500)
+        .json({ error: "Failed to add webhook", details: errorData });
+    }
+
+    res.json({ message: "Webhook added successfully" });
+  } catch (error) {
+    console.error("Error adding webhook:", error);
+    res.status(500).json({ error: "Failed to add webhook" });
+  }
+});
+
+app.delete("/pages/api/github-webhook", async (req, res) => {
+  try {
+    const { pageId } = req.body;
+
+    if (!pageId) {
+      return res.status(400).json({ error: "Missing pageId parameter" });
+    }
+
+    // Fetch the page details
+    const [page] = await db
+      .select()
+      .from(pagesTable)
+      .where(eq(pagesTable.id, pageId));
+
+    if (!page) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+
+    // Fetch the account associated with the page
+    const [account] = await db
+      .select({
+        accessToken: accountsTable.accessToken,
+      })
+      .from(accountsTable)
+      .where(eq(accountsTable.login, page.repo.split("/")[0])); // Extract account login from repo
+
+    if (!account) {
+      return res.status(404).json({ error: "No associated account found" });
+    }
+
+    // Use the associated account's access token to fetch webhooks
+    const hooksResponse = await fetch(
+      `https://api.github.com/repos/${page.repo}/hooks`,
+      {
+        headers: {
+          Authorization: `Bearer ${account.accessToken}`,
+        },
+      }
+    );
+
+    if (!hooksResponse.ok) {
+      const errorData = await hooksResponse.json();
+      console.error("Error fetching webhooks:", errorData);
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch webhooks", details: errorData });
+    }
+
+    const hooks = await hooksResponse.json();
+    const webhook = hooks.find((hook) =>
+      hook.config.url.includes(process.env.WEBHOOK_URL)
+    );
+
+    if (!webhook) {
+      return res.status(404).json({ error: "Webhook not found" });
+    }
+
+    // Use the associated account's access token to delete the webhook
+    const deleteResponse = await fetch(
+      `https://api.github.com/repos/${page.repo}/hooks/${webhook.id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${account.accessToken}`,
+        },
+      }
+    );
+
+    if (!deleteResponse.ok) {
+      const errorData = await deleteResponse.json();
+      console.error("Error deleting webhook:", errorData);
+      return res
+        .status(500)
+        .json({ error: "Failed to delete webhook", details: errorData });
+    }
+
+    res.json({ message: "Webhook removed successfully" });
+  } catch (error) {
+    console.error("Error removing webhook:", error);
+    res.status(500).json({ error: "Failed to remove webhook" });
+  }
+});
+
 export default app;
