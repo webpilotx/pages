@@ -29,11 +29,11 @@ function PagesList() {
   }, []);
 
   const handlePageClick = (page) => {
-    navigate(`/${page.id}/edit`); // Navigate to /:id/edit
+    navigate(`/${page.id}/edit`);
   };
 
   const handleCreatePage = () => {
-    navigate("/new"); // Navigate to /new
+    navigate("/new");
   };
 
   return (
@@ -193,7 +193,7 @@ function CreatePage() {
 
   const handleEnvVarChange = (index, field, value) => {
     const updatedEnvVars = [...envVars];
-    updatedEnvVars[index][field] = value; // Store the value as-is
+    updatedEnvVars[index][field] = value;
     setEnvVars(updatedEnvVars);
   };
 
@@ -209,7 +209,7 @@ function CreatePage() {
           branch,
           buildScript,
           envVars,
-          accountLogin: selectedAccount, // Include accountLogin
+          accountLogin: selectedAccount,
         }),
       });
 
@@ -219,7 +219,6 @@ function CreatePage() {
 
       const { pageId, deploymentId } = await response.json();
 
-      // Navigate to the logs page for the new deployment
       navigate(`/${pageId}/logs/${deploymentId}`);
     } catch (error) {
       console.error("Error creating page:", error);
@@ -445,7 +444,6 @@ function PageDetailsLayout() {
       const page = pages.find((p) => p.id === parseInt(pageId));
 
       if (page) {
-        // Fetch environment variables for the page
         const envVarsResponse = await fetch(
           `/pages/api/env-vars?pageId=${pageId}`
         );
@@ -486,7 +484,6 @@ function PageDetailsLayout() {
 
   return (
     <div className="mt-8 p-6 bg-gray-100 rounded-md shadow-lg">
-      {/* Display page name and full repository name with external link */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold">{pageDetails.name}</h1>
         <p className="text-gray-600">
@@ -632,7 +629,7 @@ function EditDetails() {
         "This action will update the page details before deploying. Do you want to proceed?"
       )
     ) {
-      return; // Exit if the user cancels the confirmation
+      return;
     }
 
     try {
@@ -754,9 +751,9 @@ function EditDetails() {
 }
 
 function DeploymentLogs() {
-  const { id: pageId } = useParams(); // Use pageId directly from useParams
+  const { id: pageId } = useParams();
   const [deployments, setDeployments] = useState([]);
-  const { deploymentId } = useParams(); // Get deploymentId from the route
+  const { deploymentId } = useParams();
 
   const fetchDeployments = async () => {
     try {
@@ -772,7 +769,6 @@ function DeploymentLogs() {
     fetchDeployments();
   }, [pageId]);
 
-  // If deploymentId is present, render only the selected deployment's logs
   if (deploymentId) {
     return <Outlet />;
   }
@@ -811,7 +807,7 @@ function DeploymentLogDetails() {
   const { id: pageId, deploymentId } = useParams();
   const [logContent, setLogContent] = useState("");
   const [deployment, setDeployment] = useState(null);
-  const logContainerRef = useRef(null); // Reference for the log container
+  const logContainerRef = useRef(null);
 
   const fetchDeployment = async () => {
     try {
@@ -831,10 +827,8 @@ function DeploymentLogDetails() {
   useEffect(() => {
     let isMounted = true;
 
-    // Fetch deployment details
     fetchDeployment();
 
-    // Fetch logs
     const fetchLogStream = async () => {
       try {
         const response = await fetch(
@@ -857,7 +851,6 @@ function DeploymentLogDetails() {
           }
         }
 
-        // Refresh current deployment after stream ends
         if (isMounted) {
           await fetchDeployment();
         }
@@ -877,7 +870,6 @@ function DeploymentLogDetails() {
   }, [pageId, deploymentId]);
 
   useEffect(() => {
-    // Auto-scroll to the bottom of the log container
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
@@ -906,7 +898,7 @@ function DeploymentLogDetails() {
         </p>
       </div>
       <div
-        ref={logContainerRef} // Attach the reference to the log container
+        ref={logContainerRef}
         className="mt-4 p-4 bg-gray-200 text-black rounded-md overflow-y-auto max-h-96"
       >
         <pre>{logContent || "No logs available for this deployment."}</pre>
@@ -916,7 +908,7 @@ function DeploymentLogDetails() {
 }
 
 function Settings() {
-  const { id: pageId } = useParams(); // Use pageId directly from useParams
+  const { id: pageId } = useParams();
   const [webhookStatus, setWebhookStatus] = useState(null);
   const [loadingWebhook, setLoadingWebhook] = useState(false);
 
@@ -945,15 +937,15 @@ function Settings() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json(); // Capture error details
-        console.error("Error adding webhook:", errorData); // Log error details
+        const errorData = await response.json();
+        console.error("Error adding webhook:", errorData);
         throw new Error("Failed to add webhook");
       }
 
       alert("Webhook added successfully.");
       fetchWebhookStatus();
     } catch (error) {
-      console.error("Error adding webhook:", error); // Log the error
+      console.error("Error adding webhook:", error);
       alert("Failed to add webhook.");
     }
   };
@@ -992,7 +984,7 @@ function Settings() {
         "Are you sure you want to delete this page? This action cannot be undone."
       )
     ) {
-      return; // Exit if the user cancels the confirmation
+      return;
     }
 
     try {

@@ -1,14 +1,14 @@
-import { exec } from "child_process"; // Import exec from child_process
+import { exec } from "child_process";
 import "dotenv/config";
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import express from "express";
-import fs, { promises as fsPromises } from "fs"; // Import both fs and fs/promises
-import fetch from "node-fetch"; // Import node-fetch
+import fs, { promises as fsPromises } from "fs";
+import fetch from "node-fetch";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { Worker } from "worker_threads"; // Import Worker from worker_threads
-import crypto from "crypto"; // Import crypto for secret generation
+import { Worker } from "worker_threads";
+import crypto from "crypto";
 import {
   accountsTable,
   deploymentsTable,
@@ -16,7 +16,6 @@ import {
   pagesTable,
 } from "./schema.js";
 
-// Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -27,16 +26,14 @@ const app = express();
 app.use(
   express.json({
     verify: (req, res, buf) => {
-      req.rawBody = buf.toString(); // Save raw body as a string
+      req.rawBody = buf.toString();
     },
   })
-); // Middleware to parse JSON request bodies
+);
 
-// Define the path for the webhook secret file
 const PAGES_DIR = process.env.PAGES_DIR || "./pages_dir";
 const WEBHOOK_SECRET_FILE = path.join(PAGES_DIR, "webhook_secret");
 
-// Function to generate or retrieve the webhook secret
 function getOrCreateWebhookSecret() {
   if (!fs.existsSync(WEBHOOK_SECRET_FILE)) {
     const secret = crypto.randomBytes(32).toString("hex");
@@ -48,10 +45,8 @@ function getOrCreateWebhookSecret() {
   return fs.readFileSync(WEBHOOK_SECRET_FILE, { encoding: "utf-8" });
 }
 
-// Initialize the webhook secret
 const GITHUB_WEBHOOK_SECRET = getOrCreateWebhookSecret();
 
-// Define execPromise to execute shell commands as promises
 const execPromise = (command) => {
   return new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
@@ -68,7 +63,7 @@ app.get("/pages/api/provider-accounts", async (req, res) => {
   try {
     const providerAccounts = await db
       .select({
-        login: accountsTable.login, // Select the login field
+        login: accountsTable.login,
       })
       .from(accountsTable);
     res.json(providerAccounts);
@@ -90,7 +85,6 @@ app.get("/pages/api/pages-list", async (req, res) => {
 
 app.get("/pages/api/repositories", async (req, res) => {
   try {
-    // Fetch all connected accounts
     const accounts = await db
       .select({
         login: accountsTable.login,
@@ -102,7 +96,6 @@ app.get("/pages/api/repositories", async (req, res) => {
       return res.json({ repositories: [] });
     }
 
-    // Fetch repositories from all accounts in parallel
     const allRepositories = (
       await Promise.all(
         accounts.map(async (account) => {
@@ -126,7 +119,6 @@ app.get("/pages/api/repositories", async (req, res) => {
             : [];
           const orgs = orgsResponse.ok ? await orgsResponse.json() : [];
 
-          // Fetch repositories for each organization
           const orgRepos = (
             await Promise.all(
               orgs.map(async (org) => {
@@ -148,7 +140,6 @@ app.get("/pages/api/repositories", async (req, res) => {
       )
     ).flat();
 
-    // Respond with all repositories
     res.json({ repositories: allRepositories });
   } catch (error) {
     console.error("Error fetching repositories:", error);
@@ -166,7 +157,6 @@ app.get("/pages/api/branches", async (req, res) => {
       return res.status(400).json({ error: "Missing repo parameter" });
     }
 
-    // Fetch all connected accounts
     const accounts = await db
       .select({
         accessToken: accountsTable.accessToken,
@@ -177,7 +167,6 @@ app.get("/pages/api/branches", async (req, res) => {
       return res.status(404).json({ error: "No connected accounts found" });
     }
 
-    // Use the first account's access token to fetch branches
     const response = await fetch(
       `https://api.github.com/repos/${repo}/branches`,
       {
@@ -213,7 +202,6 @@ app.get("/pages/api/github/callback", async (req, res) => {
       return res.status(400).json({ error: "Missing code parameter" });
     }
 
-    // Exchange the code for an access token
     const tokenResponse = await fetch(
       "https://github.com/login/oauth/access_token",
       {
@@ -248,7 +236,6 @@ app.get("/pages/api/github/callback", async (req, res) => {
       });
     }
 
-    // Fetch user information using the access token
     const userResponse = await fetch("https://api.github.com/user", {
       headers: {
         Authorization: `Bearer ${access_token}`,
@@ -268,7 +255,6 @@ app.get("/pages/api/github/callback", async (req, res) => {
 
     await db.insert(accountsTable).values({ login, accessToken: access_token });
 
-    // Redirect to /pages on success
     res.redirect("/pages");
   } catch (error) {
     console.error("Error handling GitHub callback:", error);
@@ -290,23 +276,21 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
 
     let page;
     if (editPage) {
-      // Update existing page
       [page] = await db
         .update(pagesTable)
         .set({
           name: pageName,
           branch,
           buildScript: buildScript || null,
-          repo: selectedRepo.full_name, // Ensure repo is updated
+          repo: selectedRepo.full_name,
         })
         .where(eq(pagesTable.id, editPage.id))
         .returning({ id: pagesTable.id });
     } else {
-      // Insert new page
       [page] = await db
         .insert(pagesTable)
         .values({
-          repo: selectedRepo.full_name, // Ensure repo is set
+          repo: selectedRepo.full_name,
           name: pageName,
           branch,
           buildScript: buildScript || null,
@@ -314,40 +298,34 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
         .returning({ id: pagesTable.id });
     }
 
-    // Delete existing environment variables for the page (if updating)
     if (editPage) {
       await db.delete(envsTable).where(eq(envsTable.pageId, editPage.id));
     }
 
-    // Ensure envVars is an array before iterating
     if (Array.isArray(envVars)) {
-      // Save environment variables to envsTable
       for (const env of envVars) {
         await db.insert(envsTable).values({
           pageId: page.id,
           name: env.name,
-          value: env.value, // Store the value as-is
+          value: env.value,
         });
       }
     } else {
       console.warn("envVars is not an array. Skipping environment variables.");
     }
 
-    // Insert a new deployment record
     const [deployment] = await db
       .insert(deploymentsTable)
       .values({ pageId: page.id })
       .returning({ id: deploymentsTable.id });
 
-    // Initialize the log file with an initial text
     const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fsPromises.mkdir(logDir, { recursive: true });
     const logFilePath = path.join(logDir, `${deployment.id}.log`);
     console.log(`Creating log file: ${logFilePath}`);
     const initialLogText = "Deployment initialized. Logs will appear here.\n";
-    await fsPromises.writeFile(logFilePath, initialLogText); // Initialize with text
+    await fsPromises.writeFile(logFilePath, initialLogText);
 
-    // Trigger the build worker using a worker thread
     const worker = new Worker(path.join(__dirname, "worker.js"), {
       workerData: { pageId: page.id, deploymentId: deployment.id },
     });
@@ -367,7 +345,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
 
     worker.on("exit", async (code) => {
       console.log(`Worker exited with code ${code}`);
-      const exitCode = code === 0 ? 0 : 1; // 0 for success, 1 for failure
+      const exitCode = code === 0 ? 0 : 1;
       try {
         await db
           .update(deploymentsTable)
@@ -375,7 +353,6 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
           .where(eq(deploymentsTable.id, deployment.id));
         console.log(`Deployment ${deployment.id} updated successfully.`);
 
-        // Append "DEPLOYMENT COMPLETED" token to the log file
         const logFilePath = path.join(
           process.env.PAGES_DIR,
           "deployments",
@@ -410,7 +387,6 @@ app.post("/pages/api/create-page", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Insert the new page into the database
     const [newPage] = await db
       .insert(pagesTable)
       .values({
@@ -418,7 +394,7 @@ app.post("/pages/api/create-page", async (req, res) => {
         name,
         branch,
         buildScript: buildScript || null,
-        accountLogin, // Include accountLogin
+        accountLogin,
       })
       .returning({
         id: pagesTable.id,
@@ -428,31 +404,27 @@ app.post("/pages/api/create-page", async (req, res) => {
         accountLogin: pagesTable.accountLogin,
       });
 
-    // Save environment variables if provided
     if (Array.isArray(envVars)) {
       for (const env of envVars) {
         await db.insert(envsTable).values({
           pageId: newPage.id,
           name: env.name,
-          value: env.value, // Store the value as-is
+          value: env.value,
         });
       }
     }
 
-    // Create a new deployment for the page
     const [deployment] = await db
       .insert(deploymentsTable)
       .values({ pageId: newPage.id })
       .returning({ id: deploymentsTable.id });
 
-    // Initialize the log file with an initial text
     const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fsPromises.mkdir(logDir, { recursive: true });
     const logFilePath = path.join(logDir, `${deployment.id}.log`);
     const initialLogText = "Deployment initialized. Logs will appear here.\n";
     await fsPromises.writeFile(logFilePath, initialLogText);
 
-    // Trigger the build worker using a worker thread
     const worker = new Worker(path.join(__dirname, "worker.js"), {
       workerData: { pageId: newPage.id, deploymentId: deployment.id },
     });
@@ -480,7 +452,6 @@ app.post("/pages/api/create-page", async (req, res) => {
           .where(eq(deploymentsTable.id, deployment.id));
         console.log(`Deployment ${deployment.id} updated successfully.`);
 
-        // Append "DEPLOYMENT COMPLETED" token to the log file
         const logFilePath = path.join(
           process.env.PAGES_DIR,
           "deployments",
@@ -510,7 +481,6 @@ app.post("/pages/api/deploy", async (req, res) => {
       return res.status(400).json({ error: "Missing pageId parameter" });
     }
 
-    // Fetch the page details
     const [page] = await db
       .select()
       .from(pagesTable)
@@ -520,20 +490,17 @@ app.post("/pages/api/deploy", async (req, res) => {
       return res.status(404).json({ error: "Page not found" });
     }
 
-    // Create a new deployment for the page
     const [deployment] = await db
       .insert(deploymentsTable)
       .values({ pageId })
       .returning({ id: deploymentsTable.id });
 
-    // Initialize the log file with an initial text
     const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fsPromises.mkdir(logDir, { recursive: true });
     const logFilePath = path.join(logDir, `${deployment.id}.log`);
     const initialLogText = "Deployment initialized. Logs will appear here.\n";
     await fsPromises.writeFile(logFilePath, initialLogText);
 
-    // Trigger the build worker using a worker thread
     const worker = new Worker(path.join(__dirname, "worker.js"), {
       workerData: { pageId, deploymentId: deployment.id },
     });
@@ -556,7 +523,6 @@ app.post("/pages/api/deploy", async (req, res) => {
           .where(eq(deploymentsTable.id, deployment.id));
         console.log(`Deployment ${deployment.id} updated successfully.`);
 
-        // Append "DEPLOYMENT COMPLETED" token to the log file
         await fsPromises.appendFile(
           logFilePath,
           `\n===DEPLOYMENT COMPLETED===\n`
@@ -611,33 +577,29 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       `${deploymentId}.log`
     );
 
-    // Check if the "DEPLOYMENT COMPLETED" token exists in the log file
     const logContent = await fsPromises.readFile(logFilePath, "utf-8");
     const isCompleted = logContent.includes("===DEPLOYMENT COMPLETED===");
 
     if (isCompleted) {
       console.log(`Deployment ${deploymentId} already completed.`);
       res.setHeader("Content-Type", "text/plain");
-      res.write(logContent); // Write the entire log file content
-      return res.end(); // End the response
+      res.write(logContent);
+      return res.end();
     }
 
-    // Set headers for streaming if deployment is not completed
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Watch for new content in the log file
     const watcher = fs.watch(logFilePath, { encoding: "utf-8" }, async () => {
       try {
         const newContent = await fsPromises.readFile(logFilePath, "utf-8");
-        res.write(newContent); // Write new content to the response
+        res.write(newContent);
 
-        // Check for the "DEPLOYMENT COMPLETED" token
         if (newContent.includes("===DEPLOYMENT COMPLETED===")) {
           console.log(`End token detected for deployment ${deploymentId}`);
-          watcher.close(); // Stop watching the file
-          res.end(); // Close the response stream
+          watcher.close();
+          res.end();
         }
       } catch (error) {
         console.error(
@@ -647,12 +609,11 @@ app.get("/pages/api/deployment-log-stream", async (req, res) => {
       }
     });
 
-    // Handle client disconnect
     req.on("close", () => {
       console.log(
         `Client disconnected from log stream for deployment ${deploymentId}`
       );
-      watcher.close(); // Stop watching the file
+      watcher.close();
     });
   } catch (error) {
     console.error(
@@ -699,7 +660,6 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
       return res.status(400).json({ error: "Missing pageId parameter" });
     }
 
-    // Fetch the page details to get the name for the service
     const [page] = await db
       .select()
       .from(pagesTable)
@@ -709,7 +669,6 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
       return res.status(404).json({ error: "Page not found" });
     }
 
-    // Delete the page itself (cascading deletions for related tables)
     const deletedPage = await db
       .delete(pagesTable)
       .where(eq(pagesTable.id, pageId))
@@ -719,7 +678,6 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
       return res.status(404).json({ error: "Page not found" });
     }
 
-    // Delete the corresponding folder in PAGES_DIR using pageId
     const pageFolderPath = path.join(process.env.PAGES_DIR, "pages", pageId);
     try {
       await fsPromises.rm(pageFolderPath, { recursive: true, force: true });
@@ -728,22 +686,18 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
       console.error(`Failed to delete folder ${pageFolderPath}:`, folderError);
     }
 
-    // Purge the systemd service
-    const serviceName = `webpilotx-${page.name}.service`; // Updated service name
+    const serviceName = `webpilotx-${page.name}.service`;
     const userSystemdDir = path.join(process.env.HOME, ".config/systemd/user");
     const serviceFilePath = path.join(userSystemdDir, serviceName);
 
     try {
-      // Stop and disable the service
       await execPromise(`systemctl --user stop ${serviceName}`);
       await execPromise(`systemctl --user disable ${serviceName}`);
       console.log(`Service ${serviceName} stopped and disabled.`);
 
-      // Remove the service file
       await fsPromises.unlink(serviceFilePath);
       console.log(`Service file ${serviceFilePath} deleted.`);
 
-      // Reload systemd
       await execPromise("systemctl --user daemon-reload");
       console.log("Systemd reloaded after service removal.");
     } catch (error) {
@@ -787,7 +741,6 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
       return res.status(400).json({ error: "Missing pageId parameter" });
     }
 
-    // Fetch the page details
     const [page] = await db
       .select()
       .from(pagesTable)
@@ -797,7 +750,6 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
       return res.status(404).json({ error: "Page not found" });
     }
 
-    // Fetch the account associated with the page
     const [account] = await db
       .select({
         accessToken: accountsTable.accessToken,
@@ -809,7 +761,6 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
       return res.status(404).json({ error: "No associated account found" });
     }
 
-    // Use the associated account's access token to check webhook status
     const response = await fetch(
       `https://api.github.com/repos/${page.repo}/hooks`,
       {
@@ -841,10 +792,8 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
   }
 });
 
-// Extract the deploy logic into a reusable function
 async function triggerDeployment(pageId) {
   try {
-    // Fetch the page details
     const [page] = await db
       .select()
       .from(pagesTable)
@@ -854,20 +803,17 @@ async function triggerDeployment(pageId) {
       throw new Error("Page not found");
     }
 
-    // Create a new deployment for the page
     const [deployment] = await db
       .insert(deploymentsTable)
       .values({ pageId })
       .returning({ id: deploymentsTable.id });
 
-    // Initialize the log file with an initial text
     const logDir = path.join(process.env.PAGES_DIR, "deployments");
     await fsPromises.mkdir(logDir, { recursive: true });
     const logFilePath = path.join(logDir, `${deployment.id}.log`);
     const initialLogText = "Deployment initialized. Logs will appear here.\n";
     await fsPromises.writeFile(logFilePath, initialLogText);
 
-    // Trigger the build worker using a worker thread
     const worker = new Worker(path.join(__dirname, "worker.js"), {
       workerData: { pageId, deploymentId: deployment.id },
     });
@@ -890,7 +836,6 @@ async function triggerDeployment(pageId) {
           .where(eq(deploymentsTable.id, deployment.id));
         console.log(`Deployment ${deployment.id} updated successfully.`);
 
-        // Append "DEPLOYMENT COMPLETED" token to the log file
         await fsPromises.appendFile(
           logFilePath,
           `\n===DEPLOYMENT COMPLETED===\n`
@@ -911,11 +856,10 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
   try {
     const event = req.headers["x-github-event"];
     const signature = req.headers["x-hub-signature-256"];
-    const payload = req.rawBody; // Use raw body for signature verification
+    const payload = req.rawBody;
 
-    // Verify the webhook signature
     const hmac = crypto.createHmac("sha256", GITHUB_WEBHOOK_SECRET);
-    hmac.update(payload); // Use raw payload for signature verification
+    hmac.update(payload);
     const expectedSignature = `sha256=${hmac.digest("hex")}`;
 
     if (signature !== expectedSignature) {
@@ -928,7 +872,6 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
       const { repository, ref } = JSON.parse(payload);
       const repoFullName = repository.full_name;
 
-      // Find all pages associated with the repository and branch
       const pages = await db
         .select()
         .from(pagesTable)
@@ -944,11 +887,10 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
         return res.status(404).json({ error: "No pages found" });
       }
 
-      // Trigger deployments for all matching pages concurrently
       await Promise.all(
         pages.map(async (page) => {
           try {
-            await triggerDeployment(page.id); // Trigger deployment directly
+            await triggerDeployment(page.id);
           } catch (error) {
             console.error(
               `Error triggering deployment for page ${page.id}:`,
@@ -969,7 +911,6 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
   }
 });
 
-// API to add or remove GitHub webhooks
 app.post("/pages/api/github-webhook", async (req, res) => {
   try {
     const { pageId } = req.body;
@@ -978,7 +919,6 @@ app.post("/pages/api/github-webhook", async (req, res) => {
       return res.status(400).json({ error: "Missing pageId parameter" });
     }
 
-    // Fetch the page details
     const [page] = await db
       .select()
       .from(pagesTable)
@@ -988,15 +928,13 @@ app.post("/pages/api/github-webhook", async (req, res) => {
       return res.status(404).json({ error: "Page not found" });
     }
 
-    // Fetch the account associated with the page
     const [account] = await db
       .select({
         accessToken: accountsTable.accessToken,
       })
       .from(accountsTable)
-      .where(eq(accountsTable.login, page.accountLogin)); // Extract account login from repo
+      .where(eq(accountsTable.login, page.accountLogin));
 
-    // Use the associated account's access token to add a webhook
     const response = await fetch(
       `https://api.github.com/repos/${page.repo}/hooks`,
       {
@@ -1010,9 +948,9 @@ app.post("/pages/api/github-webhook", async (req, res) => {
           active: true,
           events: ["push"],
           config: {
-            url: `${process.env.HOST}/pages/github-webhook-callback`, // Updated URL
+            url: `${process.env.HOST}/pages/github-webhook-callback`,
             content_type: "json",
-            secret: GITHUB_WEBHOOK_SECRET, // Add the secret
+            secret: GITHUB_WEBHOOK_SECRET,
           },
         }),
       }
@@ -1041,7 +979,6 @@ app.delete("/pages/api/github-webhook", async (req, res) => {
       return res.status(400).json({ error: "Missing pageId parameter" });
     }
 
-    // Fetch the page details
     const [page] = await db
       .select()
       .from(pagesTable)
@@ -1051,7 +988,6 @@ app.delete("/pages/api/github-webhook", async (req, res) => {
       return res.status(404).json({ error: "Page not found" });
     }
 
-    // Fetch the account associated with the page
     const [account] = await db
       .select({
         accessToken: accountsTable.accessToken,
@@ -1063,7 +999,6 @@ app.delete("/pages/api/github-webhook", async (req, res) => {
       return res.status(404).json({ error: "No associated account found" });
     }
 
-    // Use the associated account's access token to fetch webhooks
     const hooksResponse = await fetch(
       `https://api.github.com/repos/${page.repo}/hooks`,
       {
@@ -1092,7 +1027,6 @@ app.delete("/pages/api/github-webhook", async (req, res) => {
       return res.status(404).json({ error: "Webhook not found" });
     }
 
-    // Use the associated account's access token to delete the webhook
     const deleteResponse = await fetch(
       `https://api.github.com/repos/${page.repo}/hooks/${webhook.id}`,
       {
