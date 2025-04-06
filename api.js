@@ -814,6 +814,74 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
 
 app.post("/pages/api/github-webhook", async (req, res) => {
   try {
+    const event = req.headers["x-github-event"];
+    const signature = req.headers["x-hub-signature-256"];
+    const payload = req.body;
+
+    // Verify the webhook signature
+    const crypto = await import("crypto");
+    const hmac = crypto.createHmac("sha256", process.env.GITHUB_WEBHOOK_SECRET);
+    hmac.update(JSON.stringify(payload));
+    const expectedSignature = `sha256=${hmac.digest("hex")}`;
+
+    if (signature !== expectedSignature) {
+      console.error("Invalid webhook signature");
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    console.log(`Received GitHub event: ${event}`);
+    if (event === "push") {
+      const { repository, ref } = payload;
+      const repoFullName = repository.full_name;
+
+      // Find all pages associated with the repository and branch
+      const pages = await db
+        .select()
+        .from(pagesTable)
+        .where(eq(pagesTable.repo, repoFullName))
+        .where(eq(pagesTable.branch, ref.split("/").pop()));
+
+      if (pages.length === 0) {
+        console.error("No pages found for the repository and branch");
+        return res.status(404).json({ error: "No pages found" });
+      }
+
+      // Trigger deployments for all matching pages concurrently
+      await Promise.all(
+        pages.map(async (page) => {
+          const deployResponse = await fetch(
+            `${process.env.HOST}/pages/api/deploy`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pageId: page.id }),
+            }
+          );
+
+          if (!deployResponse.ok) {
+            const errorData = await deployResponse.json();
+            console.error(
+              `Error triggering deployment for page ${page.id}:`,
+              errorData
+            );
+          } else {
+            console.log(
+              `Deployment triggered successfully for page ${page.id}`
+            );
+          }
+        })
+      );
+
+      res.status(200).json({ message: "Webhook processed successfully" });
+    }
+  } catch (error) {
+    console.error("Error processing GitHub webhook:", error);
+    res.status(500).json({ error: "Failed to process webhook" });
+  }
+});
+
+app.post("/pages/api/github-webhook", async (req, res) => {
+  try {
     const { pageId } = req.body;
 
     if (!pageId) {
@@ -836,7 +904,9 @@ app.post("/pages/api/github-webhook", async (req, res) => {
         accessToken: accountsTable.accessToken,
       })
       .from(accountsTable)
-      .where(eq(accountsTable.login, page.repo.split("/")[0])); // Extract account login from repo
+      .where(eq(accountsTable.login, page.accountLogin)); // Extract account login from repo
+
+    console.log({ account });
 
     // Use the associated account's access token to add a webhook
     const response = await fetch(
@@ -852,8 +922,9 @@ app.post("/pages/api/github-webhook", async (req, res) => {
           active: true,
           events: ["push"],
           config: {
-            url: process.env.WEBHOOK_URL,
+            url: `${process.env.HOST}/pages/api/github-webhook`,
             content_type: "json",
+            secret: process.env.GITHUB_WEBHOOK_SECRET, // Add the secret
           },
         }),
       }
@@ -898,7 +969,9 @@ app.delete("/pages/api/github-webhook", async (req, res) => {
         accessToken: accountsTable.accessToken,
       })
       .from(accountsTable)
-      .where(eq(accountsTable.login, page.repo.split("/")[0])); // Extract account login from repo
+      .where(eq(accountsTable.login, page.accountLogin));
+
+    console.log({ account });
 
     if (!account) {
       return res.status(404).json({ error: "No associated account found" });
