@@ -797,23 +797,24 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
       return res.status(404).json({ error: "Page not found" });
     }
 
-    // Fetch all connected accounts
-    const accounts = await db
+    // Fetch the account associated with the page
+    const [account] = await db
       .select({
         accessToken: accountsTable.accessToken,
       })
-      .from(accountsTable);
+      .from(accountsTable)
+      .where(eq(accountsTable.login, page.accountLogin));
 
-    if (!accounts.length) {
-      return res.status(404).json({ error: "No connected accounts found" });
+    if (!account) {
+      return res.status(404).json({ error: "No associated account found" });
     }
 
-    // Use the first account's access token to check webhook status
+    // Use the associated account's access token to check webhook status
     const response = await fetch(
       `https://api.github.com/repos/${page.repo}/hooks`,
       {
         headers: {
-          Authorization: `Bearer ${accounts[0].accessToken}`,
+          Authorization: `Bearer ${account.accessToken}`,
         },
       }
     );
@@ -828,7 +829,9 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
 
     const hooks = await response.json();
     const webhookExists = hooks.some((hook) =>
-      hook.config.url.includes(process.env.WEBHOOK_URL)
+      hook.config.url.includes(
+        `${process.env.HOST}/pages/github-webhook-callback`
+      )
     );
 
     res.json({ webhookExists });
