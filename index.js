@@ -463,6 +463,80 @@ app.post("/pages/api/create-page", async (req, res) => {
   }
 });
 
+app.post("/pages/api/deploy", async (req, res) => {
+  try {
+    const { pageId } = req.body;
+
+    if (!pageId) {
+      return res.status(400).json({ error: "Missing pageId parameter" });
+    }
+
+    // Fetch the page details
+    const [page] = await db
+      .select()
+      .from(pagesTable)
+      .where(eq(pagesTable.id, pageId));
+
+    if (!page) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+
+    // Create a new deployment for the page
+    const [deployment] = await db
+      .insert(deploymentsTable)
+      .values({ pageId })
+      .returning({ id: deploymentsTable.id });
+
+    // Initialize the log file with an initial text
+    const logDir = path.join(process.env.PAGES_DIR, "deployments");
+    await fsPromises.mkdir(logDir, { recursive: true });
+    const logFilePath = path.join(logDir, `${deployment.id}.log`);
+    const initialLogText = "Deployment initialized. Logs will appear here.\n";
+    await fsPromises.writeFile(logFilePath, initialLogText);
+
+    // Trigger the build worker using a worker thread
+    const worker = new Worker(path.join(__dirname, "worker.js"), {
+      workerData: { pageId, deploymentId: deployment.id },
+    });
+
+    worker.on("error", async (error) => {
+      console.error(`Worker error: ${error.message}`);
+      await fsPromises.appendFile(
+        logFilePath,
+        `\n===DEPLOYMENT ERROR===\n${error.message}\n`
+      );
+    });
+
+    worker.on("exit", async (code) => {
+      console.log(`Worker exited with code ${code}`);
+      const exitCode = code === 0 ? 0 : 1;
+      try {
+        await db
+          .update(deploymentsTable)
+          .set({ exitCode, completedAt: new Date().toISOString() })
+          .where(eq(deploymentsTable.id, deployment.id));
+        console.log(`Deployment ${deployment.id} updated successfully.`);
+
+        // Append "DEPLOYMENT COMPLETED" token to the log file
+        await fsPromises.appendFile(
+          logFilePath,
+          `\n===DEPLOYMENT COMPLETED===\n`
+        );
+      } catch (error) {
+        console.error(`Failed to update deployment ${deployment.id}:`, error);
+      }
+    });
+
+    res.json({
+      message: "Deployment triggered successfully",
+      deploymentId: deployment.id,
+    });
+  } catch (error) {
+    console.error("Error during deployment:", error);
+    res.status(500).json({ error: "Failed to deploy", details: error.message });
+  }
+});
+
 app.get("/pages/api/deployments", async (req, res) => {
   try {
     const { pageId } = req.query;

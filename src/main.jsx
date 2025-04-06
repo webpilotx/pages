@@ -547,6 +547,7 @@ function EditDetails() {
   const { pageDetails, setPageDetails, branches, loadingBranches } =
     useOutletContext();
   const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false); // Track editing state
 
   const handleAddEnvVar = () => {
     const updatedEnvVars = [
@@ -563,8 +564,30 @@ function EditDetails() {
 
   const handleEnvVarChangeEdit = (index, field, value) => {
     const updatedEnvVars = [...pageDetails.envVars];
-    updatedEnvVars[index][field] = value; // Store the value as-is
+    updatedEnvVars[index][field] = value;
     setPageDetails({ ...pageDetails, envVars: updatedEnvVars });
+  };
+
+  const handleDeploy = async () => {
+    try {
+      const response = await fetch("/pages/api/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pageId: pageDetails.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to deploy");
+      }
+
+      const data = await response.json();
+      navigate(`/pages/${pageDetails.id}/logs/${data.deploymentId}`);
+    } catch (error) {
+      console.error("Error deploying:", error);
+      alert("Failed to deploy.");
+    }
   };
 
   const handleSaveAndDeploy = async () => {
@@ -608,6 +631,7 @@ function EditDetails() {
               setPageDetails({ ...pageDetails, branch: e.target.value })
             }
             className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+            disabled={!isEditing} // Read-only by default
           >
             <option value="" disabled>
               Select a branch
@@ -629,6 +653,7 @@ function EditDetails() {
           }
           className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
           rows="4"
+          disabled={!isEditing} // Read-only by default
         ></textarea>
       </div>
       <div className="mb-4">
@@ -643,6 +668,7 @@ function EditDetails() {
                 handleEnvVarChangeEdit(index, "name", e.target.value)
               }
               className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+              disabled={!isEditing} // Read-only by default
             />
             <input
               type="text"
@@ -652,30 +678,52 @@ function EditDetails() {
                 handleEnvVarChangeEdit(index, "value", e.target.value)
               }
               className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+              disabled={!isEditing} // Read-only by default
             />
-            <button
-              onClick={() => handleRemoveEnvVar(index)}
-              type="button"
-              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-            >
-              Remove
-            </button>
+            {isEditing && (
+              <button
+                onClick={() => handleRemoveEnvVar(index)}
+                type="button"
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+              >
+                Remove
+              </button>
+            )}
           </div>
         ))}
+        {isEditing && (
+          <button
+            onClick={handleAddEnvVar}
+            type="button"
+            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+          >
+            Add Env
+          </button>
+        )}
+      </div>
+      <div className="flex space-x-4">
+        {!isEditing ? (
+          <button
+            onClick={handleDeploy}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Deploy
+          </button>
+        ) : (
+          <button
+            onClick={handleSaveAndDeploy}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Save and Deploy
+          </button>
+        )}
         <button
-          onClick={handleAddEnvVar}
-          type="button"
-          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+          onClick={() => setIsEditing(!isEditing)}
+          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
         >
-          Add Env
+          {isEditing ? "Cancel" : "Edit"}
         </button>
       </div>
-      <button
-        onClick={handleSaveAndDeploy}
-        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-      >
-        Save and Deploy
-      </button>
     </div>
   );
 }
