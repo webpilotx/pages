@@ -899,6 +899,9 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
       );
 
       res.status(200).json({ message: "Webhook processed successfully" });
+    } else {
+      console.log(`Unhandled GitHub event: ${event}`);
+      return res.status(200).json({ message: `Event ${event} ignored` });
     }
   } catch (error) {
     console.error("Error processing GitHub webhook:", error);
