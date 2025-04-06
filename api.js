@@ -7,6 +7,7 @@ import fetch from "node-fetch"; // Import node-fetch
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { Worker } from "worker_threads"; // Import Worker from worker_threads
+import { exec } from "child_process"; // Import exec from child_process
 import {
   accountsTable,
   deploymentsTable,
@@ -23,6 +24,19 @@ const db = drizzle(process.env.DB_FILE_NAME);
 const app = express();
 
 app.use(express.json()); // Middleware to parse JSON request bodies
+
+// Define execPromise to execute shell commands as promises
+const execPromise = (command) => {
+  return new Promise((resolve, reject) => {
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(stdout || stderr);
+      }
+    });
+  });
+};
 
 app.get("/pages/api/provider-accounts", async (req, res) => {
   try {

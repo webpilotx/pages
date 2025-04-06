@@ -38,7 +38,7 @@ function PagesList() {
 
   return (
     <>
-      <h1 className="text-3xl font-bold mt-12 mb-6">Pages List</h1>
+      <h1 className="text-3xl font-bold mt-12 mb-6">Pages</h1>
       <ul className="space-y-4">
         {pagesList.map((page) => (
           <li
