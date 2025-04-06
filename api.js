@@ -841,7 +841,72 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
   }
 });
 
-// API to handle GitHub webhook callbacks
+// Extract the deploy logic into a reusable function
+async function triggerDeployment(pageId) {
+  try {
+    // Fetch the page details
+    const [page] = await db
+      .select()
+      .from(pagesTable)
+      .where(eq(pagesTable.id, pageId));
+
+    if (!page) {
+      throw new Error("Page not found");
+    }
+
+    // Create a new deployment for the page
+    const [deployment] = await db
+      .insert(deploymentsTable)
+      .values({ pageId })
+      .returning({ id: deploymentsTable.id });
+
+    // Initialize the log file with an initial text
+    const logDir = path.join(process.env.PAGES_DIR, "deployments");
+    await fsPromises.mkdir(logDir, { recursive: true });
+    const logFilePath = path.join(logDir, `${deployment.id}.log`);
+    const initialLogText = "Deployment initialized. Logs will appear here.\n";
+    await fsPromises.writeFile(logFilePath, initialLogText);
+
+    // Trigger the build worker using a worker thread
+    const worker = new Worker(path.join(__dirname, "worker.js"), {
+      workerData: { pageId, deploymentId: deployment.id },
+    });
+
+    worker.on("error", async (error) => {
+      console.error(`Worker error: ${error.message}`);
+      await fsPromises.appendFile(
+        logFilePath,
+        `\n===DEPLOYMENT ERROR===\n${error.message}\n`
+      );
+    });
+
+    worker.on("exit", async (code) => {
+      console.log(`Worker exited with code ${code}`);
+      const exitCode = code === 0 ? 0 : 1;
+      try {
+        await db
+          .update(deploymentsTable)
+          .set({ exitCode, completedAt: new Date().toISOString() })
+          .where(eq(deploymentsTable.id, deployment.id));
+        console.log(`Deployment ${deployment.id} updated successfully.`);
+
+        // Append "DEPLOYMENT COMPLETED" token to the log file
+        await fsPromises.appendFile(
+          logFilePath,
+          `\n===DEPLOYMENT COMPLETED===\n`
+        );
+      } catch (error) {
+        console.error(`Failed to update deployment ${deployment.id}:`, error);
+      }
+    });
+
+    console.log(`Deployment triggered successfully for page ${pageId}`);
+  } catch (error) {
+    console.error(`Error triggering deployment for page ${pageId}:`, error);
+    throw error;
+  }
+}
+
 app.post("/pages/github-webhook-callback", async (req, res) => {
   try {
     const event = req.headers["x-github-event"];
@@ -873,6 +938,7 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
             eq(pagesTable.branch, ref.split("/").pop())
           )
         );
+
       if (pages.length === 0) {
         console.error("No pages found for the repository and branch");
         return res.status(404).json({ error: "No pages found" });
@@ -881,24 +947,12 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
       // Trigger deployments for all matching pages concurrently
       await Promise.all(
         pages.map(async (page) => {
-          const deployResponse = await fetch(
-            `${process.env.HOST}/pages/api/deploy`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pageId: page.id }),
-            }
-          );
-
-          if (!deployResponse.ok) {
-            const errorData = await deployResponse.json();
+          try {
+            await triggerDeployment(page.id); // Trigger deployment directly
+          } catch (error) {
             console.error(
               `Error triggering deployment for page ${page.id}:`,
-              errorData
-            );
-          } else {
-            console.log(
-              `Deployment triggered successfully for page ${page.id}`
+              error
             );
           }
         })
