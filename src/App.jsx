@@ -3,7 +3,7 @@ import {
   Link,
   Outlet,
   Route,
-  BrowserRouter as Router,
+  HashRouter as Router,
   Routes,
   useNavigate,
   useParams,
@@ -34,11 +34,11 @@ function PagesList() {
   }, []);
 
   const handlePageClick = (page) => {
-    navigate(`/pages/${page.id}/edit`); // Navigate to /pages/:id/edit by default
+    navigate(`/${page.id}/edit`); // Navigate to /:id/edit
   };
 
   const handleCreatePage = () => {
-    navigate("/pages/new");
+    navigate("/new"); // Navigate to /new
   };
 
   return (
@@ -1099,7 +1099,7 @@ function AppContent() {
       <nav className="bg-gray-200 border-b border-gray-300">
         <div className="container mx-auto px-4 py-3 flex items-center">
           <Link
-            to="/pages"
+            to="/"
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
           >
             Home
@@ -1108,9 +1108,9 @@ function AppContent() {
       </nav>
       <main className="flex-grow container mx-auto px-4 py-8">
         <Routes>
-          <Route path="/pages" element={<PagesList />} />
-          <Route path="/pages/new" element={<CreatePage />} />
-          <Route path="/pages/:id" element={<PageDetailsLayout />}>
+          <Route path="/" element={<PagesList />} />
+          <Route path="/new" element={<CreatePage />} />
+          <Route path="/:id" element={<PageDetailsLayout />}>
             <Route path="edit" element={<EditDetails />} />
             <Route path="logs" element={<DeploymentLogs />}>
               <Route path=":deploymentId" element={<DeploymentLogDetails />} />
