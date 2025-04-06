@@ -221,7 +221,14 @@ function CreatePage() {
       const response = await fetch("/pages/api/create-page", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo, name, branch, buildScript, envVars }),
+        body: JSON.stringify({
+          repo,
+          name,
+          branch,
+          buildScript,
+          envVars,
+          accountLogin: selectedAccount, // Include accountLogin
+        }),
       });
 
       if (!response.ok) {

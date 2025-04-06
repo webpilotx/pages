@@ -378,9 +378,9 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
 
 app.post("/pages/api/create-page", async (req, res) => {
   try {
-    const { repo, name, branch, buildScript, envVars } = req.body;
+    const { repo, name, branch, buildScript, envVars, accountLogin } = req.body;
 
-    if (!repo || !name || !branch) {
+    if (!repo || !name || !branch || !accountLogin) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -392,12 +392,14 @@ app.post("/pages/api/create-page", async (req, res) => {
         name,
         branch,
         buildScript: buildScript || null,
+        accountLogin, // Include accountLogin
       })
       .returning({
         id: pagesTable.id,
         repo: pagesTable.repo,
         name: pagesTable.name,
         branch: pagesTable.branch,
+        accountLogin: pagesTable.accountLogin,
       });
 
     // Save environment variables if provided
