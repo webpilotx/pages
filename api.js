@@ -24,7 +24,13 @@ const db = drizzle(process.env.DB_FILE_NAME);
 
 const app = express();
 
-app.use(express.json()); // Middleware to parse JSON request bodies
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString(); // Save raw body as a string
+    },
+  })
+); // Middleware to parse JSON request bodies
 
 // Define the path for the webhook secret file
 const PAGES_DIR = process.env.PAGES_DIR || "./pages_dir";
@@ -837,7 +843,7 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
   try {
     const event = req.headers["x-github-event"];
     const signature = req.headers["x-hub-signature-256"];
-    const payload = req.body;
+    const payload = req.rawBody; // Use raw body for signature verification
 
     // Verify the webhook signature
     const hmac = crypto.createHmac("sha256", GITHUB_WEBHOOK_SECRET);
