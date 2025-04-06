@@ -547,6 +547,13 @@ function EditDetails() {
   const { pageDetails, setPageDetails, branches, loadingBranches } =
     useOutletContext();
   const navigate = useNavigate();
+  const [originalDetails, setOriginalDetails] = useState(null);
+
+  useEffect(() => {
+    setOriginalDetails(JSON.stringify(pageDetails)); // Store the original details as a string
+  }, [pageDetails]);
+
+  const isEdited = JSON.stringify(pageDetails) !== originalDetails;
 
   const handleAddEnvVar = () => {
     const updatedEnvVars = [
@@ -694,16 +701,10 @@ function EditDetails() {
       </div>
       <div className="flex space-x-4">
         <button
-          onClick={handleDeploy}
+          onClick={isEdited ? handleSaveAndDeploy : handleDeploy}
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
         >
-          Deploy
-        </button>
-        <button
-          onClick={handleSaveAndDeploy}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-        >
-          Save and Deploy
+          {isEdited ? "Save and Deploy" : "Deploy"}
         </button>
       </div>
     </div>
