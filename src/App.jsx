@@ -1025,17 +1025,6 @@ function Settings() {
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Settings</h2>
-      <p className="mb-4 text-gray-700">
-        Deleting this page will remove all deployments, logs, the cloned
-        repository from disk, and the associated systemd service. This action
-        cannot be undone.
-      </p>
-      <button
-        onClick={handleDeletePage}
-        className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-      >
-        Delete Page
-      </button>
 
       <div className="mt-8">
         <h3 className="text-xl font-bold mb-4">GitHub Webhook</h3>
@@ -1066,6 +1055,21 @@ function Settings() {
             </button>
           </div>
         )}
+      </div>
+
+      <div className="mt-8">
+        <h3 className="text-xl font-bold mb-4">Delete Page</h3>
+        <p className="mb-4 text-gray-700">
+          Deleting this page will remove all deployments, logs, the cloned
+          repository from disk, and the associated systemd service. This action
+          cannot be undone.
+        </p>
+        <button
+          onClick={handleDeletePage}
+          className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+        >
+          Delete Page
+        </button>
       </div>
     </div>
   );
