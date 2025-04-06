@@ -909,6 +909,7 @@ function DeploymentLogDetails() {
 
 function Settings() {
   const { id: pageId } = useParams();
+  const navigate = useNavigate();
   const [webhookStatus, setWebhookStatus] = useState(null);
   const [loadingWebhook, setLoadingWebhook] = useState(false);
 
@@ -998,7 +999,7 @@ function Settings() {
       }
 
       alert("Page and associated service deleted successfully.");
-      window.location.href = "/pages";
+      navigate("/");
     } catch (error) {
       console.error("Error deleting page:", error);
       alert(`Failed to delete page: ${error.message}`);
