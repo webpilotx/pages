@@ -1,0 +1,1 @@
+ALTER TABLE `pages_table` ADD `accountLogin` text NOT NULL REFERENCES accounts_table(login);

@@ -64,6 +64,13 @@
       "when": 1743742865698,
       "tag": "0008_dry_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1743904595641,
+      "tag": "0009_talented_sentinel",
+      "breakpoints": true
     }
   ]
 }

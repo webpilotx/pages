@@ -12,6 +12,9 @@ export const accountsTable = sqliteTable("accounts_table", {
 
 export const pagesTable = sqliteTable("pages_table", {
   id: int().primaryKey({ autoIncrement: true }),
+  accountLogin: text()
+    .notNull()
+    .references(() => accountsTable.login, { onDelete: "cascade" }),
   repo: text().notNull(),
   name: text().notNull(),
   branch: text().notNull(),

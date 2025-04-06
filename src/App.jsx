@@ -956,13 +956,15 @@ function Settings() {
       });
 
       if (!response.ok) {
+        const errorData = await response.json(); // Capture error details
+        console.error("Error adding webhook:", errorData); // Log error details
         throw new Error("Failed to add webhook");
       }
 
       alert("Webhook added successfully.");
       fetchWebhookStatus();
     } catch (error) {
-      console.error("Error adding webhook:", error);
+      console.error("Error adding webhook:", error); // Log the error
       alert("Failed to add webhook.");
     }
   };

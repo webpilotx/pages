@@ -836,10 +836,6 @@ app.post("/pages/api/github-webhook", async (req, res) => {
       .from(accountsTable)
       .where(eq(accountsTable.login, page.repo.split("/")[0])); // Extract account login from repo
 
-    if (!account) {
-      return res.status(404).json({ error: "No associated account found" });
-    }
-
     // Use the associated account's access token to add a webhook
     const response = await fetch(
       `https://api.github.com/repos/${page.repo}/hooks`,
