@@ -547,7 +547,6 @@ function EditDetails() {
   const { pageDetails, setPageDetails, branches, loadingBranches } =
     useOutletContext();
   const navigate = useNavigate();
-  const [isEditing, setIsEditing] = useState(false); // Track editing state
 
   const handleAddEnvVar = () => {
     const updatedEnvVars = [
@@ -631,7 +630,6 @@ function EditDetails() {
               setPageDetails({ ...pageDetails, branch: e.target.value })
             }
             className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
-            disabled={!isEditing} // Read-only by default
           >
             <option value="" disabled>
               Select a branch
@@ -653,7 +651,6 @@ function EditDetails() {
           }
           className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
           rows="4"
-          disabled={!isEditing} // Read-only by default
         ></textarea>
       </div>
       <div className="mb-4">
@@ -668,7 +665,6 @@ function EditDetails() {
                 handleEnvVarChangeEdit(index, "name", e.target.value)
               }
               className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-              disabled={!isEditing} // Read-only by default
             />
             <input
               type="text"
@@ -678,50 +674,36 @@ function EditDetails() {
                 handleEnvVarChangeEdit(index, "value", e.target.value)
               }
               className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-              disabled={!isEditing} // Read-only by default
             />
-            {isEditing && (
-              <button
-                onClick={() => handleRemoveEnvVar(index)}
-                type="button"
-                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-              >
-                Remove
-              </button>
-            )}
+            <button
+              onClick={() => handleRemoveEnvVar(index)}
+              type="button"
+              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+            >
+              Remove
+            </button>
           </div>
         ))}
-        {isEditing && (
-          <button
-            onClick={handleAddEnvVar}
-            type="button"
-            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-          >
-            Add Env
-          </button>
-        )}
+        <button
+          onClick={handleAddEnvVar}
+          type="button"
+          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+        >
+          Add Env
+        </button>
       </div>
       <div className="flex space-x-4">
-        {!isEditing ? (
-          <button
-            onClick={handleDeploy}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          >
-            Deploy
-          </button>
-        ) : (
-          <button
-            onClick={handleSaveAndDeploy}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          >
-            Save and Deploy
-          </button>
-        )}
         <button
-          onClick={() => setIsEditing(!isEditing)}
-          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+          onClick={handleDeploy}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
         >
-          {isEditing ? "Cancel" : "Edit"}
+          Deploy
+        </button>
+        <button
+          onClick={handleSaveAndDeploy}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        >
+          Save and Deploy
         </button>
       </div>
     </div>
