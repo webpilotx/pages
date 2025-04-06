@@ -639,6 +639,14 @@ function EditDetails() {
   };
 
   const handleSaveAndDeploy = async () => {
+    if (
+      !window.confirm(
+        "This action will update the page details before deploying. Do you want to proceed?"
+      )
+    ) {
+      return; // Exit if the user cancels the confirmation
+    }
+
     try {
       const response = await fetch("/pages/api/save-and-deploy", {
         method: "POST",
