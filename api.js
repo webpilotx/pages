@@ -1,6 +1,6 @@
 import { exec } from "child_process"; // Import exec from child_process
 import "dotenv/config";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import express from "express";
 import fs, { promises as fsPromises } from "fs"; // Import both fs and fs/promises
@@ -867,9 +867,12 @@ app.post("/pages/github-webhook-callback", async (req, res) => {
       const pages = await db
         .select()
         .from(pagesTable)
-        .where(eq(pagesTable.repo, repoFullName))
-        .where(eq(pagesTable.branch, ref.split("/").pop()));
-
+        .where(
+          and(
+            eq(pagesTable.repo, repoFullName),
+            eq(pagesTable.branch, ref.split("/").pop())
+          )
+        );
       if (pages.length === 0) {
         console.error("No pages found for the repository and branch");
         return res.status(404).json({ error: "No pages found" });
