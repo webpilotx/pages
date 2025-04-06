@@ -431,11 +431,6 @@ app.post("/pages/api/create-page", async (req, res) => {
 
     worker.on("error", async (error) => {
       console.error(`Worker error: ${error.message}`);
-      const logFilePath = path.join(
-        process.env.PAGES_DIR,
-        "deployments",
-        `${deployment.id}.log`
-      );
       await fsPromises.appendFile(
         logFilePath,
         `\n===DEPLOYMENT ERROR===\n${error.message}\n`
@@ -452,11 +447,6 @@ app.post("/pages/api/create-page", async (req, res) => {
           .where(eq(deploymentsTable.id, deployment.id));
         console.log(`Deployment ${deployment.id} updated successfully.`);
 
-        const logFilePath = path.join(
-          process.env.PAGES_DIR,
-          "deployments",
-          `${deployment.id}.log`
-        );
         await fsPromises.appendFile(
           logFilePath,
           `\n===DEPLOYMENT COMPLETED===\n`
@@ -466,10 +456,51 @@ app.post("/pages/api/create-page", async (req, res) => {
       }
     });
 
+    // Add webhook for the new page
+    const [account] = await db
+      .select({
+        accessToken: accountsTable.accessToken,
+      })
+      .from(accountsTable)
+      .where(eq(accountsTable.login, accountLogin));
+
+    if (!account) {
+      throw new Error("No associated account found for webhook setup.");
+    }
+
+    const webhookResponse = await fetch(
+      `https://api.github.com/repos/${repo}/hooks`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${account.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "web",
+          active: true,
+          events: ["push"],
+          config: {
+            url: `${process.env.HOST}/pages/github-webhook-callback`,
+            content_type: "json",
+            secret: GITHUB_WEBHOOK_SECRET,
+          },
+        }),
+      }
+    );
+
+    if (!webhookResponse.ok) {
+      const errorData = await webhookResponse.json();
+      console.error("Error adding webhook:", errorData);
+      throw new Error("Failed to add webhook");
+    }
+
     res.status(201).json({ pageId: newPage.id, deploymentId: deployment.id });
   } catch (error) {
     console.error("Error creating new page:", error);
-    res.status(500).json({ error: "Failed to create new page" });
+    res
+      .status(500)
+      .json({ error: "Failed to create new page", details: error.message });
   }
 });
 
