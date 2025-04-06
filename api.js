@@ -812,7 +812,8 @@ app.get("/pages/api/github-webhook-status", async (req, res) => {
   }
 });
 
-app.post("/pages/api/github-webhook", async (req, res) => {
+// API to handle GitHub webhook callbacks
+app.post("/pages/api/github-webhook-callback", async (req, res) => {
   try {
     const event = req.headers["x-github-event"];
     const signature = req.headers["x-hub-signature-256"];
@@ -821,7 +822,7 @@ app.post("/pages/api/github-webhook", async (req, res) => {
     // Verify the webhook signature
     const crypto = await import("crypto");
     const hmac = crypto.createHmac("sha256", process.env.GITHUB_WEBHOOK_SECRET);
-    hmac.update(JSON.stringify(payload));
+    hmac.update(payload); // Use raw payload for signature verification
     const expectedSignature = `sha256=${hmac.digest("hex")}`;
 
     if (signature !== expectedSignature) {
@@ -831,7 +832,7 @@ app.post("/pages/api/github-webhook", async (req, res) => {
 
     console.log(`Received GitHub event: ${event}`);
     if (event === "push") {
-      const { repository, ref } = payload;
+      const { repository, ref } = JSON.parse(payload);
       const repoFullName = repository.full_name;
 
       // Find all pages associated with the repository and branch
@@ -880,6 +881,7 @@ app.post("/pages/api/github-webhook", async (req, res) => {
   }
 });
 
+// API to add or remove GitHub webhooks
 app.post("/pages/api/github-webhook", async (req, res) => {
   try {
     const { pageId } = req.body;
@@ -906,8 +908,6 @@ app.post("/pages/api/github-webhook", async (req, res) => {
       .from(accountsTable)
       .where(eq(accountsTable.login, page.accountLogin)); // Extract account login from repo
 
-    console.log({ account });
-
     // Use the associated account's access token to add a webhook
     const response = await fetch(
       `https://api.github.com/repos/${page.repo}/hooks`,
@@ -922,7 +922,7 @@ app.post("/pages/api/github-webhook", async (req, res) => {
           active: true,
           events: ["push"],
           config: {
-            url: `${process.env.HOST}/pages/api/github-webhook`,
+            url: `${process.env.HOST}/pages/api/github-webhook-callback`,
             content_type: "json",
             secret: process.env.GITHUB_WEBHOOK_SECRET, // Add the secret
           },
@@ -970,8 +970,6 @@ app.delete("/pages/api/github-webhook", async (req, res) => {
       })
       .from(accountsTable)
       .where(eq(accountsTable.login, page.accountLogin));
-
-    console.log({ account });
 
     if (!account) {
       return res.status(404).json({ error: "No associated account found" });
