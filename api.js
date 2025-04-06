@@ -8,6 +8,7 @@ import fetch from "node-fetch"; // Import node-fetch
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { Worker } from "worker_threads"; // Import Worker from worker_threads
+import crypto from "crypto"; // Import crypto for secret generation
 import {
   accountsTable,
   deploymentsTable,
@@ -24,6 +25,25 @@ const db = drizzle(process.env.DB_FILE_NAME);
 const app = express();
 
 app.use(express.json()); // Middleware to parse JSON request bodies
+
+// Define the path for the webhook secret file
+const PAGES_DIR = process.env.PAGES_DIR || "./pages_dir";
+const WEBHOOK_SECRET_FILE = path.join(PAGES_DIR, "webhook_secret");
+
+// Function to generate or retrieve the webhook secret
+function getOrCreateWebhookSecret() {
+  if (!fs.existsSync(WEBHOOK_SECRET_FILE)) {
+    const secret = crypto.randomBytes(32).toString("hex");
+    fs.writeFileSync(WEBHOOK_SECRET_FILE, secret, { encoding: "utf-8" });
+    console.log("Generated and saved new webhook secret.");
+  } else {
+    console.log("Webhook secret loaded from file.");
+  }
+  return fs.readFileSync(WEBHOOK_SECRET_FILE, { encoding: "utf-8" });
+}
+
+// Initialize the webhook secret
+const GITHUB_WEBHOOK_SECRET = getOrCreateWebhookSecret();
 
 // Define execPromise to execute shell commands as promises
 const execPromise = (command) => {
@@ -820,9 +840,8 @@ app.post("/pages/api/github-webhook-callback", async (req, res) => {
     const payload = req.body;
 
     // Verify the webhook signature
-    const crypto = await import("crypto");
-    const hmac = crypto.createHmac("sha256", process.env.GITHUB_WEBHOOK_SECRET);
-    hmac.update(payload); // Use raw payload for signature verification
+    const hmac = crypto.createHmac("sha256", GITHUB_WEBHOOK_SECRET);
+    hmac.update(payload); // Use raw payload for signature verification 
     const expectedSignature = `sha256=${hmac.digest("hex")}`;
 
     if (signature !== expectedSignature) {
