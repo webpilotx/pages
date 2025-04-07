@@ -79,14 +79,14 @@ const execPromise = (command) =>
     const pullCommand = `cd ${cloneDir} && git pull origin ${page.branch}`;
     await fs.appendFile(
       logFilePath,
-      `\n===GIT PULL===\nExecuting: ${pullCommand}\n`
+      `\n===GIT PULL===\nExecuting: git pull origin ${page.branch}\n` // Avoid logging sensitive data
     );
     await execPromise(pullCommand);
   } else {
     const cloneCommand = `git clone --branch ${page.branch} ${authRepoUrl} ${cloneDir}`;
     await fs.appendFile(
       logFilePath,
-      `\n===GIT CLONE===\nExecuting: ${cloneCommand}\n`
+      `\n===GIT CLONE===\nExecuting: git clone --branch ${page.branch} [REDACTED_URL] ${cloneDir}\n` // Redact sensitive data
     );
     await execPromise(cloneCommand);
   }
