@@ -1,12 +1,11 @@
-import { exec, spawn } from "child_process";
+import { exec } from "child_process";
 import "dotenv/config";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/libsql";
 import fs from "fs/promises";
 import path from "path";
-import { drizzle } from "drizzle-orm/libsql";
-import { eq } from "drizzle-orm";
 import { workerData } from "worker_threads";
-import { envsTable, pagesTable } from "./schema.js";
-import os from "os";
+import { accountsTable, envsTable, pagesTable } from "./schema.js";
 
 const db = drizzle(process.env.DB_FILE_NAME);
 
@@ -51,6 +50,23 @@ const execPromise = (command) =>
     .from(envsTable)
     .where(eq(envsTable.pageId, pageId));
 
+  const [account] = await db
+    .select({
+      accessToken: accountsTable.accessToken,
+    })
+    .from(accountsTable)
+    .where(eq(accountsTable.login, page.accountLogin));
+
+  if (!account) {
+    await fs.appendFile(
+      logFilePath,
+      `\n===DEPLOYMENT ERROR===\nNo associated account found for page\n`
+    );
+    process.exit(1);
+  }
+
+  const authRepoUrl = `https://${account.accessToken}@github.com/${page.repo}.git`;
+
   const cloneDir = path.join(process.env.PAGES_DIR, "pages", String(pageId));
   await fs.mkdir(cloneDir, { recursive: true });
 
@@ -67,7 +83,7 @@ const execPromise = (command) =>
     );
     await execPromise(pullCommand);
   } else {
-    const cloneCommand = `git clone --branch ${page.branch} https://github.com/${page.repo}.git ${cloneDir}`;
+    const cloneCommand = `git clone --branch ${page.branch} ${authRepoUrl} ${cloneDir}`;
     await fs.appendFile(
       logFilePath,
       `\n===GIT CLONE===\nExecuting: ${cloneCommand}\n`
