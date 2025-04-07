@@ -700,6 +700,45 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
       return res.status(404).json({ error: "Page not found" });
     }
 
+    // Fetch the account associated with the page
+    const [account] = await db
+      .select({
+        accessToken: accountsTable.accessToken,
+      })
+      .from(accountsTable)
+      .where(eq(accountsTable.login, page.accountLogin));
+
+    if (account) {
+      // Fetch and delete all webhooks for the repository
+      const hooksResponse = await fetch(
+        `https://api.github.com/repos/${page.repo}/hooks`,
+        {
+          headers: {
+            Authorization: `Bearer ${account.accessToken}`,
+          },
+        }
+      );
+
+      if (hooksResponse.ok) {
+        const hooks = await hooksResponse.json();
+        const webhookPromises = hooks.map((hook) =>
+          fetch(`https://api.github.com/repos/${page.repo}/hooks/${hook.id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${account.accessToken}`,
+            },
+          })
+        );
+        await Promise.all(webhookPromises);
+        console.log(`Deleted all webhooks for repository: ${page.repo}`);
+      } else {
+        console.error(
+          `Failed to fetch webhooks for repository ${page.repo}:`,
+          await hooksResponse.json()
+        );
+      }
+    }
+
     const deletedPage = await db
       .delete(pagesTable)
       .where(eq(pagesTable.id, pageId))
@@ -735,9 +774,9 @@ app.delete("/pages/api/pages/:id", async (req, res) => {
       console.error(`Error purging service ${serviceName}:`, error);
     }
 
-    res
-      .status(200)
-      .json({ message: "Page, folder, and service deleted successfully" });
+    res.status(200).json({
+      message: "Page, folder, service, and webhooks deleted successfully",
+    });
   } catch (error) {
     console.error("Error deleting page:", error);
     res.status(500).json({ error: "Failed to delete page" });
