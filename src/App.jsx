@@ -651,7 +651,7 @@ function EditDetails() {
       }
 
       const data = await response.json();
-      navigate(`/pages/${pageDetails.id}/logs/${data.deploymentId}`);
+      navigate(`/${pageDetails.id}/logs/${data.deploymentId}`);
     } catch (error) {
       console.error("Error saving and deploying:", error);
       alert("Failed to save and deploy.");
