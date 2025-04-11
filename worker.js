@@ -114,10 +114,25 @@ const execPromise = (command) =>
     );
     const logStream = await fs.open(logFilePath, "a");
 
+    const excludedEnvVars = [
+      "DATABASE_URL",
+      "VITE_GITHUB_CLIENT_ID",
+      "GITHUB_CLIENT_SECRET",
+      "PAGES_DIR",
+      "HOST",
+      "PORT",
+    ];
+
+    const filteredEnv = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => !excludedEnvVars.includes(key)
+      )
+    );
+
     await new Promise((resolve, reject) => {
       const childProcess = exec(buildCommand, {
         shell: true,
-        env: {}, // Start with an empty environment to avoid inheriting parent secrets
+        env: filteredEnv, // Pass only filtered environment variables
       });
 
       childProcess.stdout.on("data", (data) => {
