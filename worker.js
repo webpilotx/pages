@@ -115,7 +115,7 @@ const execPromise = (command) =>
     const logStream = await fs.open(logFilePath, "a");
 
     await new Promise((resolve, reject) => {
-      const childProcess = exec(buildCommand, { shell: true });
+      const childProcess = exec(buildCommand); // No env passed, child process will have no environment variables
 
       childProcess.stdout.on("data", (data) => {
         logStream.write(data);
