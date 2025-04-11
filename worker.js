@@ -115,7 +115,10 @@ const execPromise = (command) =>
     const logStream = await fs.open(logFilePath, "a");
 
     await new Promise((resolve, reject) => {
-      const childProcess = exec(buildCommand, { env: {} });
+      const childProcess = exec(buildCommand, {
+        shell: true,
+        env: {}, // Start with an empty environment to avoid inheriting parent secrets
+      });
 
       childProcess.stdout.on("data", (data) => {
         logStream.write(data);
