@@ -8,7 +8,7 @@ The following environment variables are required for the system to function prop
 
 ### General Configuration
 
-- **`DB_FILE_NAME`**: The path to the SQLite database file used by the application.
+- **`DATABASE_URL`**: The path to the SQLite database file used by the application.
 - **`PAGES_DIR`**: The directory where pages and deployments are stored.
 - **`PORT`**: The port on which the server will run (default: `3000`).
 
@@ -155,7 +155,7 @@ For more details, refer to the source code and comments.
 3. Configure environment variables in a `.env` file:
 
    ```env
-   DB_FILE_NAME=path/to/database.sqlite
+   DATABASE_URL=path/to/database.sqlite
    PAGES_DIR=/path/to/pages
    VITE_GITHUB_CLIENT_ID=your_github_client_id
    GITHUB_CLIENT_SECRET=your_github_client_secret

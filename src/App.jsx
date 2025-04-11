@@ -82,6 +82,7 @@ function CreatePage() {
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [buildOutputDir, setBuildOutputDir] = useState("");
   const reposPerPage = 6;
 
   const navigate = useNavigate();
@@ -210,6 +211,7 @@ function CreatePage() {
           buildScript,
           envVars,
           accountLogin: selectedAccount,
+          buildOutputDir: buildOutputDir || null, // Include buildOutputDir
         }),
       });
 
@@ -361,6 +363,18 @@ function CreatePage() {
                   className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
                   rows="4"
                 ></textarea>
+              </div>
+              <div className="mb-4">
+                <label className="block mb-2">
+                  Build Output Directory (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={buildOutputDir}
+                  onChange={(e) => setBuildOutputDir(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+                  placeholder="e.g., dist"
+                />
               </div>
               <div className="mb-4">
                 <label className="block mb-2">Environment Variables</label>
@@ -534,6 +548,9 @@ function EditDetails() {
   const [branches, setBranches] = useState([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [originalDetails, setOriginalDetails] = useState(null);
+  const [buildOutputDir, setBuildOutputDir] = useState(
+    pageDetails?.buildOutputDir || ""
+  );
 
   useEffect(() => {
     const fetchPageDetails = async () => {
@@ -643,6 +660,7 @@ function EditDetails() {
           buildScript: pageDetails.buildScript,
           envVars: pageDetails.envVars,
           editPage: pageDetails,
+          buildOutputDir: buildOutputDir || null, // Include buildOutputDir
         }),
       });
 
@@ -698,6 +716,16 @@ function EditDetails() {
           className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
           rows="4"
         ></textarea>
+      </div>
+      <div className="mb-4">
+        <label className="block mb-2">Build Output Directory (Optional)</label>
+        <input
+          type="text"
+          value={buildOutputDir}
+          onChange={(e) => setBuildOutputDir(e.target.value)}
+          className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+          placeholder="e.g., dist"
+        />
       </div>
       <div className="mb-4">
         <label className="block mb-2">Environment Variables</label>

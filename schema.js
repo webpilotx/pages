@@ -19,6 +19,7 @@ export const pagesTable = sqliteTable("pages_table", {
   name: text().notNull(),
   branch: text().notNull(),
   buildScript: text(),
+  buildOutputDir: text(), // Add buildOutputDir field
   createdAt: text()
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),

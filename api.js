@@ -19,7 +19,7 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const db = drizzle(process.env.DB_FILE_NAME);
+const db = drizzle(process.env.DATABASE_URL);
 
 const app = express();
 
@@ -267,8 +267,15 @@ app.get("/pages/api/github/callback", async (req, res) => {
 
 app.post("/pages/api/save-and-deploy", async (req, res) => {
   try {
-    const { selectedRepo, pageName, branch, buildScript, envVars, editPage } =
-      req.body;
+    const {
+      selectedRepo,
+      pageName,
+      branch,
+      buildScript,
+      envVars,
+      editPage,
+      buildOutputDir,
+    } = req.body;
 
     if (!pageName || !branch || !selectedRepo || !selectedRepo.full_name) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -283,6 +290,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
           branch,
           buildScript: buildScript || null,
           repo: selectedRepo.full_name,
+          buildOutputDir: buildOutputDir || null, // Allow null
         })
         .where(eq(pagesTable.id, editPage.id))
         .returning({ id: pagesTable.id });
@@ -294,6 +302,7 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
           name: pageName,
           branch,
           buildScript: buildScript || null,
+          buildOutputDir: buildOutputDir || null, // Allow null
         })
         .returning({ id: pagesTable.id });
     }
@@ -381,7 +390,15 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
 
 app.post("/pages/api/create-page", async (req, res) => {
   try {
-    const { repo, name, branch, buildScript, envVars, accountLogin } = req.body;
+    const {
+      repo,
+      name,
+      branch,
+      buildScript,
+      envVars,
+      accountLogin,
+      buildOutputDir,
+    } = req.body;
 
     if (!repo || !name || !branch || !accountLogin) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -395,6 +412,7 @@ app.post("/pages/api/create-page", async (req, res) => {
         branch,
         buildScript: buildScript || null,
         accountLogin,
+        buildOutputDir: buildOutputDir || null, // Allow null
       })
       .returning({
         id: pagesTable.id,
@@ -402,6 +420,7 @@ app.post("/pages/api/create-page", async (req, res) => {
         name: pagesTable.name,
         branch: pagesTable.branch,
         accountLogin: pagesTable.accountLogin,
+        buildOutputDir: pagesTable.buildOutputDir,
       });
 
     if (Array.isArray(envVars)) {

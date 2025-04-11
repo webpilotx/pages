@@ -7,7 +7,7 @@ import path from "path";
 import { workerData } from "worker_threads";
 import { accountsTable, envsTable, pagesTable } from "./schema.js";
 
-const db = drizzle(process.env.DB_FILE_NAME);
+const db = drizzle(process.env.DATABASE_URL);
 
 const execPromise = (command) =>
   new Promise((resolve, reject) => {
@@ -138,8 +138,12 @@ const execPromise = (command) =>
   }
 
   if (exitCode === 0) {
-    const serviceName = `webpilotx-${page.name}.service`; // Updated service name
+    const serviceName = `webpilotx-${page.name}.service`;
     const nodeBinary = process.execPath;
+    const execStartPath = page.buildOutputDir
+      ? path.join(page.buildOutputDir, "index.js")
+      : path.join("index.js");
+
     const envVarsString = envVars
       .map((env) => `Environment="${env.name}=${env.value}"`)
       .join("\n");
@@ -151,7 +155,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=${cloneDir}
-ExecStart=${nodeBinary} index.js
+ExecStart=${nodeBinary} ${execStartPath}
 Restart=always
 ${envVarsString}
 
