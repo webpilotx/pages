@@ -548,9 +548,6 @@ function EditDetails() {
   const [branches, setBranches] = useState([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [originalDetails, setOriginalDetails] = useState(null);
-  const [buildOutputDir, setBuildOutputDir] = useState(
-    pageDetails?.buildOutputDir || ""
-  );
 
   useEffect(() => {
     const fetchPageDetails = async () => {
@@ -660,7 +657,7 @@ function EditDetails() {
           buildScript: pageDetails.buildScript,
           envVars: pageDetails.envVars,
           editPage: pageDetails,
-          buildOutputDir: buildOutputDir || null, // Include buildOutputDir
+          buildOutputDir: pageDetails.buildOutputDir || null, // Include buildOutputDir
         }),
       });
 
@@ -721,8 +718,10 @@ function EditDetails() {
         <label className="block mb-2">Build Output Directory (Optional)</label>
         <input
           type="text"
-          value={buildOutputDir}
-          onChange={(e) => setBuildOutputDir(e.target.value)}
+          value={pageDetails?.buildOutputDir || ""}
+          onChange={(e) =>
+            setPageDetails({ ...pageDetails, buildOutputDir: e.target.value })
+          }
           className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
           placeholder="e.g., dist"
         />

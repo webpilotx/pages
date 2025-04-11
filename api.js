@@ -75,7 +75,16 @@ app.get("/pages/api/provider-accounts", async (req, res) => {
 
 app.get("/pages/api/pages-list", async (req, res) => {
   try {
-    const pagesList = await db.select().from(pagesTable);
+    const pagesList = await db
+      .select({
+        id: pagesTable.id,
+        repo: pagesTable.repo,
+        name: pagesTable.name,
+        branch: pagesTable.branch,
+        buildScript: pagesTable.buildScript,
+        buildOutputDir: pagesTable.buildOutputDir,
+      })
+      .from(pagesTable);
     res.json(pagesList);
   } catch (error) {
     console.error("Error fetching pages list:", error);
