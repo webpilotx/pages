@@ -71,6 +71,13 @@
       "when": 1743904595641,
       "tag": "0009_talented_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1744355593278,
+      "tag": "0010_closed_the_stranger",
+      "breakpoints": true
     }
   ]
 }
