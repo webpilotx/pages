@@ -76,10 +76,12 @@ const execPromise = (command) =>
     .catch(() => false);
 
   if (repoExists) {
-    const pullCommand = `cd ${cloneDir} && git pull origin ${page.branch}`;
+    const pullCommand = `
+      cd ${cloneDir} && git reset --hard && git pull origin ${page.branch}
+    `;
     await fs.appendFile(
       logFilePath,
-      `\n===GIT PULL===\nExecuting: git pull origin ${page.branch}\n` // Avoid logging sensitive data
+      `\n===GIT PULL===\nExecuting: git reset --hard && git pull origin ${page.branch}\n` // Avoid logging sensitive data
     );
     await execPromise(pullCommand);
   } else {
