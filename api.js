@@ -397,6 +397,54 @@ app.post("/pages/api/save-and-deploy", async (req, res) => {
   }
 });
 
+app.post("/pages/api/save-page-details", async (req, res) => {
+  try {
+    const {
+      selectedRepo,
+      pageName,
+      branch,
+      buildScript,
+      envVars,
+      editPage,
+      buildOutputDir,
+    } = req.body;
+
+    if (!pageName || !branch || !selectedRepo || !selectedRepo.full_name) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (editPage) {
+      await db
+        .update(pagesTable)
+        .set({
+          name: pageName,
+          branch,
+          buildScript: buildScript || null,
+          repo: selectedRepo.full_name,
+          buildOutputDir: buildOutputDir || null,
+        })
+        .where(eq(pagesTable.id, editPage.id));
+
+      await db.delete(envsTable).where(eq(envsTable.pageId, editPage.id));
+    }
+
+    if (Array.isArray(envVars)) {
+      for (const env of envVars) {
+        await db.insert(envsTable).values({
+          pageId: editPage.id,
+          name: env.name,
+          value: env.value,
+        });
+      }
+    }
+
+    res.json({ message: "Page details saved successfully" });
+  } catch (error) {
+    console.error("Error saving page details:", error);
+    res.status(500).json({ error: "Failed to save page details" });
+  }
+});
+
 app.post("/pages/api/create-page", async (req, res) => {
   try {
     const {

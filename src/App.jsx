@@ -673,6 +673,33 @@ function EditDetails() {
     }
   };
 
+  const handleSave = async () => {
+    try {
+      const response = await fetch("/pages/api/save-page-details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedRepo: { full_name: pageDetails.repo },
+          pageName: pageDetails.name,
+          branch: pageDetails.branch,
+          buildScript: pageDetails.buildScript,
+          envVars: pageDetails.envVars,
+          editPage: pageDetails,
+          buildOutputDir: pageDetails.buildOutputDir || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save page details");
+      }
+
+      alert("Page details saved successfully.");
+    } catch (error) {
+      console.error("Error saving page details:", error);
+      alert("Failed to save page details.");
+    }
+  };
+
   if (!pageDetails) {
     return <p className="text-center text-gray-500">Loading page details...</p>;
   }
@@ -766,6 +793,17 @@ function EditDetails() {
         </button>
       </div>
       <div className="flex space-x-4">
+        <button
+          onClick={handleSave}
+          disabled={!isEdited}
+          className={`px-4 py-2 rounded-md ${
+            isEdited
+              ? "bg-gray-300 text-black hover:bg-gray-400"
+              : "bg-gray-200 text-gray-500 cursor-not-allowed"
+          }`}
+        >
+          Save
+        </button>
         <button
           onClick={isEdited ? handleSaveAndDeploy : handleDeploy}
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
