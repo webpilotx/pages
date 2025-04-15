@@ -548,6 +548,7 @@ function EditDetails() {
   const [branches, setBranches] = useState([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [originalDetails, setOriginalDetails] = useState(null);
+  const [showEnvVars, setShowEnvVars] = useState([]);
 
   useEffect(() => {
     const fetchPageDetails = async () => {
@@ -593,6 +594,12 @@ function EditDetails() {
       fetchBranches();
     }
   }, [pageDetails?.repo]);
+
+  useEffect(() => {
+    if (pageDetails?.envVars) {
+      setShowEnvVars(pageDetails.envVars.map(() => false));
+    }
+  }, [pageDetails?.envVars]);
 
   const isEdited = JSON.stringify(pageDetails) !== originalDetails;
 
@@ -700,6 +707,18 @@ function EditDetails() {
     }
   };
 
+  const toggleEnvVarVisibility = (index) => {
+    const updatedShowEnvVars = [...showEnvVars];
+    updatedShowEnvVars[index] = !updatedShowEnvVars[index];
+    setShowEnvVars(updatedShowEnvVars);
+  };
+
+  const copyToClipboard = (value) => {
+    navigator.clipboard.writeText(value).then(() => {
+      alert("Copied to clipboard!");
+    });
+  };
+
   if (!pageDetails) {
     return <p className="text-center text-gray-500">Loading page details...</p>;
   }
@@ -756,7 +775,7 @@ function EditDetails() {
       <div className="mb-4">
         <label className="block mb-2">Environment Variables</label>
         {pageDetails.envVars?.map((env, index) => (
-          <div key={index} className="flex space-x-4 mb-2">
+          <div key={index} className="flex items-center space-x-4 mb-2">
             <input
               type="text"
               placeholder="Name"
@@ -764,17 +783,33 @@ function EditDetails() {
               onChange={(e) =>
                 handleEnvVarChangeEdit(index, "name", e.target.value)
               }
-              className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
+              className="w-1/3 px-4 py-2 bg-gray-200 text-black rounded-md"
             />
-            <input
-              type="text"
-              placeholder="Value"
-              value={env.value}
-              onChange={(e) =>
-                handleEnvVarChangeEdit(index, "value", e.target.value)
-              }
-              className="w-1/2 px-4 py-2 bg-gray-200 text-black rounded-md"
-            />
+            <div className="relative w-1/3">
+              <input
+                type={showEnvVars[index] ? "text" : "password"}
+                placeholder="Value"
+                value={env.value}
+                onChange={(e) =>
+                  handleEnvVarChangeEdit(index, "value", e.target.value)
+                }
+                className="w-full px-4 py-2 bg-gray-200 text-black rounded-md"
+              />
+              <button
+                type="button"
+                onClick={() => toggleEnvVarVisibility(index)}
+                className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
+              >
+                {showEnvVars[index] ? "🙈" : "👁️"}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(env.value)}
+              className="px-4 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+            >
+              Copy
+            </button>
             <button
               onClick={() => handleRemoveEnvVar(index)}
               type="button"
