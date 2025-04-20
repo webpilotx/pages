@@ -32,6 +32,9 @@ app.use(
 );
 
 const PAGES_DIR = process.env.PAGES_DIR || "./pages_dir";
+if (!fs.existsSync(PAGES_DIR)) {
+  fs.mkdirSync(PAGES_DIR, { recursive: true });
+}
 const WEBHOOK_SECRET_FILE = path.join(PAGES_DIR, "webhook_secret");
 
 function getOrCreateWebhookSecret() {
