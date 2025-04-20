@@ -6,7 +6,7 @@ npx drizzle-kit migrate
 
 # Define environment variables
 export NODE_ENV=production
-export PORT=5004
+export PORT=6004
 
 # Define log file path
 LOG_FILE="production.log"
