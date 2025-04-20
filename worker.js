@@ -184,6 +184,7 @@ WantedBy=default.target
     `;
 
     const userSystemdDir = path.join(process.env.HOME, ".config/systemd/user");
+    await fs.mkdir(userSystemdDir, { recursive: true });
     const serviceFilePath = path.join(userSystemdDir, serviceName);
 
     await fs.appendFile(
