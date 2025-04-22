@@ -21,6 +21,20 @@ export default defineConfig({
     rollupOptions: {
       input: ["index.html", "index.js", "worker.js"],
       external: [...builtinModules, "node-fetch", "express"],
+      output: {
+        entryFileNames: (chunk) => {
+          if (chunk.name === "worker") {
+            return "worker.js"; // Keep worker.js filename unchanged
+          }
+          if (
+            chunk.name === "index" &&
+            chunk.facadeModuleId.endsWith("index.js")
+          ) {
+            return "index.js"; // Keep original index.js filename
+          }
+          return "assets/[name]-[hash].js"; // Place other files in assets with hash
+        },
+      },
     },
   },
 });
