@@ -2,10 +2,9 @@
 
 pnpm install
 pnpm run build
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 
 # Define environment variables
-export NODE_ENV=production
 export PORT=6004
 
 # Define log file path

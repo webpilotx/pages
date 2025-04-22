@@ -1,4 +1,5 @@
 import { exec } from "child_process";
+import crypto from "crypto";
 import "dotenv/config";
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
@@ -8,7 +9,6 @@ import fetch from "node-fetch";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { Worker } from "worker_threads";
-import crypto from "crypto";
 import {
   accountsTable,
   deploymentsTable,
